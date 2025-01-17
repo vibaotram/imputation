@@ -1,0 +1,5 @@
+.cache/*
+.conda/*
+.snakemake/*
+.condarc
+test/*

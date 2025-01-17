@@ -1,0 +1,85 @@
+TARGET_BAM: "/home/tvi069/imputation/test/INPUT/BAM/bamlist" # BAM.BAI IS REQUIRED BY GLIMPSE
+OUTPUT_DIR: "/home/tvi069/imputation/test/OUTPUT"
+PREFIX_NAME: "p4"
+# PREFIX_NAME: "p1_random_1000_30gen_target1"
+
+REFERENCE_SEQ: "/home/tvi069/imputation/test/INPUT/REF/chr15_ref_modN.fa"
+REFERENCE_VCFGZ: "/home/tvi069/imputation/test/INPUT/REF/ref_test.vcf.gz" 
+GROUNDTRUTH: "/home/tvi069/imputation/test/INPUT/REF/test_truth.vcf.gz"
+
+IMPUTATION: # True/False
+    BEAGLE: True
+    GLIMPSE: True
+    STITCH: True
+    GENEIMP: True
+    QUILT: True
+
+NGSRELATE:
+    MIN_MAF: 0.01
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+KGD:
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+BAM2VCF: # BY BCFTOOLS MPILEUP
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+FILTERVCF_TARGET: # BY BCFTOOLS FILTER
+    MIN_QUAL: 30
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+REF_BEAGLE_PHASING:
+    PARAM: "em=true"
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+BEAGLE:
+    PARAM: "em=true"
+    # NE: 100
+    # PHASE_STATES: 280
+    # GENETIC_MAP: "" # /nesi/nobackup/uoa04053/tram/sim_hihi_chr15/slim/genetic_map_chr15_Beagle.map"
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+
+GLIMPSE:
+    GLIMPSE:
+    GLIMPSE_CHUNK_PARAM: "" # "--map test/INPUT/REF_SEQ/genetic_map_chr15_Glimpse.map"
+    GLIMPSE_SPLIT_REFERENCE_PARAM: ""
+    GLIMPSE_PHASE_PARAM: ""
+    GLIMPSE_LIGATE_PARAM: ""
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+
+STITCH:
+    NHAP: 5 # REQUIRED
+    NGEN: 50 # REQUIRED
+    OTHER: "--expRate=1"
+    # WINDOW_SIZE: NA 
+    # GENETIC_MAP: "" # "test/INPUT/REF_SEQ/genetic_map_chr15_Stitch.map" # REQUIRE cM, cM/Mb AT EACH SNP IN THE REF VCF 
+    # RECOM_RATE: 3.5 # expected recombination rate
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+GENEIMP:
+    # WINDOW_SIZE: NA
+    HAP: 10
+    KL: 50
+    FLANKSIZE: 0.5
+    FILTER: "pairrand"
+    OTHER: ""
+    THREADS: 6
+    # PREFIX_NAME: "p4"
+
+QUILT:
+    WINDOW_SIZE: 5000000
+    BUFFER_SIZE: 100000
+    NGEN: 50
+    OTHER: "--expRate=1"
+    THREADS: 6
+    MEM_MB: 8G
