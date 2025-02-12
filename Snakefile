@@ -1,4 +1,5 @@
-container: "docker://vibaotram/imputation:1.3" #docker pull staphb/bcftools, continuumio/miniconda3:24.7.1-0
+import pandas as pd
+container: "docker://vibaotram/imputation:1.4" #docker pull staphb/bcftools, continuumio/miniconda3:24.7.1-0
 
 #configfile: "config.yaml"
 
@@ -71,13 +72,22 @@ rule NGSRELATE_BAM:
         -P {threads}
 
         zcat {params.OUTDIR}/{params.OUTNAME}.mafs.gz | cut -f5 | sed 1d > {params.OUTDIR}/{params.OUTNAME}.freq
+        
+        id_list=$(mktemp -p {params.OUTDIR})
+        while read FILE;
+        do
+            basename $FILE | sed 's/.bam//' >> $id_list
+        done < {input}
 
         ### run NgsRelate
         ngsRelate -g {params.OUTDIR}/{params.OUTNAME}.glf.gz \
         -n {params.NIND} \
+        -z $id_list \
         -f {params.OUTDIR}/{params.OUTNAME}.freq  \
         -O {output.RESULTS} \
         -p {threads}
+        
+        rm $id_list
         '''
 
 rule BAM2VCF:
@@ -179,7 +189,11 @@ rule NGSRELATE_TRUTH:
     shell:
         '''
         exec > >(tee "{log}") 2>&1
-        ngsRelate -h {input} -T GT -O {output.RESULTS} -p {threads}
+
+        id_list=$(mktemp -p {params.OUTDIR})
+        bcftools query -l {input} > $id_list
+        ngsRelate -h {input} -T GT -z $id_list -O {output.RESULTS} -p {threads}
+        rm $id_list
         '''
 
 
@@ -519,7 +533,7 @@ rule QUILT:
             --regionEnd=${{end}} \
             --buffer={params.BUFFER_SIZE} \
             --nGen={params.NGEN} \
-            --bamlist={input.BAMlist}list \
+            --bamlist={input.BAMlist} \
             --reference_vcf_file={input.REF_VCF} \
             --nCores={threads} \
             {params.OTHER} || \
@@ -561,12 +575,18 @@ rule NGSRELATE_IMPUTED:
         os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
     output:
         RESULTS = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_" + str.capitalize("{tool}") + ".ngsrelate")
+    params:
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED")
     threads: workflow.cores * 0.5
     log: os.path.join(config['OUTPUT_DIR'], "LOG", "NGSRELATE_IMPUTED_{tool}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
-        ngsRelate -h {input} -T GT -O {output.RESULTS} -p {threads}
+
+        id_list=$(mktemp -p {params.OUTDIR})
+        bcftools query -l {input} > $id_list
+        ngsRelate -h {input} -T GT -z $id_list -O {output.RESULTS} -p {threads}
+        rm $id_list
         '''
 
 rule KGD_IMPUTED:
@@ -644,6 +664,95 @@ rule HAPLOTYPE_ACCURACY:
         '''
 
 
+## read pop file
+popfile = pd.read_csv(config['STAIRWAY_PLOT']['POPFILE'], sep="\t")
+
+# Count unique values in the second column
+NPOP = popfile.iloc[:, 1].nunique()
+POPS = []
+
+for i in range(NPOP):  # Fix loop function
+    POPS.append(str(popfile.iloc[:, 1].unique()[i]))  # Append to a list
+
+POPS = " ".join(POPS) 
+
+rule FST:
+    input: 
+        IMPUTE = expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION),
+        TRUTH = rules.FILTERVCF_REF.output.TRUTH,
+        POPFILE = config['STAIRWAY_PLOT']['POPFILE']
+    output: os.path.join(config['OUTPUT_DIR'], "POPGEN", "FST", config['PREFIX_NAME'] + "_FST.txt")
+    params: 
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "FST")
+    threads: 1
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", "FST.log")
+    shell:
+        '''
+        exec > >(tee "{log}") 2>&1
+        fst_param=""
+        for s in {POPS}; do
+            SUBFILE={params.OUTDIR}/subpop${{s}}.txt
+            awk -F'\t' -v val=$s '$2 == val' {input.POPFILE} > $SUBFILE
+            fst_param="${{fst_param}}--weir-fst-pop ${{SUBFILE}} "
+        done
+        
+        cd {params.OUTDIR}
+        rm -f {output}
+        for vcf in {input.IMPUTE}; do
+            echo ${{vcf}}
+            tool=$(basename $(dirname ${{vcf}}))
+            echo ${{tool}}
+            vcftools --gzvcf ${{vcf}} ${{fst_param}} --out ${{tool}} > ${{tool}}.log 2>&1
+            fst=$(grep "mean" ${{tool}}.log | cut -d" " -f7)
+            echo -e "${{tool}}\t${{fst}}" >> {output}
+        done
+        
+        vcftools --gzvcf {input.TRUTH} ${{fst_param}} --out TRUTH > TRUTH.log 2>&1
+        fst=$(grep "mean" TRUTH.log | cut -d" " -f7)
+        echo -e "TRUTH\t${{fst}}" >> {output}
+        
+        '''
+
+
+
+rule STAIRWAY_IMPUTED:
+    input: 
+        VCF = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        POPFILE = config['STAIRWAY_PLOT']['POPFILE']
+    output:
+        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}", "stairway_results.txt")
+        # expand(os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}", "{subpop}", config['PREFIX_NAME'] + "_{tool}_{subpop}_STAIRWAY.png"), subpop = POPS, tool = "{tool}")
+    params:
+        BLUEPRINT = "scripts/template.blueprint",
+        SEQ_LEN = config['STAIRWAY_PLOT']['SEQUENCE_LENGTH'],
+        MU = config['STAIRWAY_PLOT']['MUT_RATE'],
+        PLOT_TITLE = "{tool}-" + config['PREFIX_NAME'],
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}")
+    script: "scripts/run_SFS_Stairway.R"
+
+
+rule STAIRWAY_TRUTH:
+    input: 
+        VCF = rules.FILTERVCF_REF.output.TRUTH,
+        POPFILE = config['STAIRWAY_PLOT']['POPFILE']
+    output:
+        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH", "stairway_results.txt")
+        # expand(os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}", "{subpop}", config['PREFIX_NAME'] + "_{tool}_{subpop}_STAIRWAY.png"), subpop = POPS, tool = "{tool}")
+    params:
+        BLUEPRINT = "scripts/template.blueprint",
+        SEQ_LEN = config['STAIRWAY_PLOT']['SEQUENCE_LENGTH'],
+        MU = config['STAIRWAY_PLOT']['MUT_RATE'],
+        PLOT_TITLE = "Groundtruth-"+ config['PREFIX_NAME'],
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH")
+    script: "scripts/run_SFS_Stairway.R"
+
+
+rule POPGEN:
+    input: 
+        expand(rules.STAIRWAY_IMPUTED.output, tool = IMPUTATION),
+        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH", "stairway_results.txt"),
+        rules.FST.output if NPOP > 1 else ()
+
 
 rule ACCURACY:
     input:
@@ -657,7 +766,8 @@ rule ACCURACY:
         IQS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_per_sample_results.txt"), tool = IMPUTATION),
         METRICS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_sample.tsv"), tool = IMPUTATION),
         METRICS_VAR = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_variant.tsv"), tool = IMPUTATION),
-        HAPPY = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION)
+        HAPPY = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION),
+        POPGEN = rules.POPGEN.input
     output:
         NGSRELATE_REL = report(
                 os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_Relatedness.png"),

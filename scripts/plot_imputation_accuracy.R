@@ -1,13 +1,6 @@
 suppressMessages(library(ggplot2))
 suppressMessages(library(dplyr))
 suppressMessages(library(tidyr))
-suppressMessages(library(gridExtra))
-suppressMessages(library(viridis))
-
-
-cols <- c("#90E0EF","#98FB98", inferno(5, end = 0.8))
-names(cols) <- c("LCS", "TRUTH", "BEAGLE", "GENEIMP", "GLIMPSE", "QUILT", "STITCH")
-
 
 # KGD
 kgd_lcs_file <- snakemake@input[["KGD_LCS"]]
@@ -30,7 +23,7 @@ kgd_imputed <- do.call(rbind, lapply(kgd_imputed_files, function(f) {
 }))
 
 kgd <- do.call(rbind, list(kgd_lcs, kgd_truth, kgd_imputed))
-kgd$data <- factor(kgd$data, c("LCS", "TRUTH", sort(unique(kgd_imputed$data))))
+kgd$data <- factor(kgd$data, c("LCS", "TRUTH", unique(kgd_imputed$data)))
 
 png(snakemake@output[["KGD"]], width = 1500, height = 500)
 ggplot(kgd) +
@@ -41,9 +34,7 @@ ggplot(kgd) +
         panel.background = element_rect(color = "black", fill = NULL, linewidth = 1),
         strip.text = element_text(size = 16),
         axis.title = element_text(size = 16),
-        axis.text = element_text(size = 12)) +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
+        axis.text = element_text(size = 12))
 dev.off()
 
 
@@ -69,7 +60,7 @@ nr_imputed <- do.call(rbind, lapply(nr_imputed_files, function(f) {
 }))
 
 nr <- do.call(rbind, list(nr_lcs, nr_truth, nr_imputed))
-nr$data <- factor(nr$data, c("LCS", "TRUTH", sort(unique(nr_imputed$data))))
+nr$data <- factor(nr$data, c("LCS", "TRUTH", unique(nr_imputed$data)))
 
 png(snakemake@output[["NGSRELATE_REL"]], width = 1500, height = 500)
 ggplot(nr) +
@@ -81,9 +72,7 @@ ggplot(nr) +
         strip.text = element_text(size = 16),
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 12)) +
-  xlab("Pairwise Relatedness (rab)") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
+  xlab("Pairwise Relatedness (rab)")
 dev.off()
 
 png(snakemake@output[["NGSRELATE_INBREEDING"]], width = 1500, height = 500)
@@ -99,32 +88,30 @@ nr %>%
         strip.text = element_text(size = 16),
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 12)) +
-  xlab("Individual Inbreeding Coefficient (Fa)") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
+  xlab("Individual Inbreeding Coefficient (Fa)")
 dev.off()
 
 
 # IQS
-iqs_var_files <- snakemake@input[["IQS_VAR"]]
+iqs_files <- snakemake@input[["IQS_VAR"]]
 # iqs_files <- list.files("/home/tvi069/imputation/test/OUTPUT/ACCURACY", "_per_variant_results.txt",
 #                         recursive = T, full.names = T)
 
-iqs_var <- do.call(rbind, lapply(iqs_var_files, function(f) {
+iqs <- do.call(rbind, lapply(iqs_files, function(f) {
   tool <- basename(dirname(f))
   i <- read.delim(f)
   i$data <- tool
   i
 }))
 
-iqs_var <- iqs_var %>% 
+iqs <- iqs %>% 
   pivot_longer(cols = c("IQS", "precision", "recall", "F.score"),
                names_to = "Metrics", values_to = "Value") 
-iqs_var$MAF_bin <- cut(iqs_var$WGS_MAF, breaks = c(0, 0.05, 0.1, 0.25, 0.5), include.lowest = T)
-iqs_var$Metrics <- factor(iqs_var$Metrics, levels = c("recall", "precision", "F.score", "IQS"))
+iqs$MAF_bin <- cut(iqs$WGS_MAF, breaks = c(0, 0.05, 0.1, 0.25, 0.5), include.lowest = T)
+iqs$Metrics <- factor(iqs$Metrics, levels = c("recall", "precision", "F.score", "IQS"))
 
-png(snakemake@output[["IQS_VAR"]], width = 1500, height = 800)
-ggplot(iqs_var) +
+png(snakemake@output[["IQS"]], width = 1500, height = 800)
+ggplot(iqs) +
   facet_grid(cols = vars(data), rows = vars(Metrics)) +
   geom_boxplot(aes(y = Value, x = MAF_bin, color = data), outliers = F, show.legend = F) +
   theme_minimal() +
@@ -134,84 +121,16 @@ ggplot(iqs_var) +
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 12)) + 
   ylab("Value per variant") + 
-  xlab("Truth MAF") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
+  xlab("Truth MAF")
 dev.off()
-
-
-iqs_sam_files <- snakemake@input[["IQS_SAM"]]
-# iqs_files <- list.files("/home/tvi069/imputation/test/OUTPUT/ACCURACY", "_per_variant_results.txt",
-#                         recursive = T, full.names = T)
-
-iqs_sam <- do.call(rbind, lapply(iqs_sam_files, function(f) {
-  tool <- basename(dirname(f))
-  i <- read.delim(f)
-  i$data <- tool
-  i
-}))
-
-iqs_sam <- iqs_sam %>% 
-  pivot_longer(cols = c("precision", "recall", "F.score"),
-               names_to = "Metrics", values_to = "Value") 
-iqs_sam$Metrics <- factor(iqs_sam$Metrics, levels = c("recall", "precision", "F.score"))
-
-png(snakemake@output[["IQS_SAM"]], width = 800, height = 800)
-ggplot(iqs_sam) +
-  facet_grid(rows = vars(Metrics)) +
-  geom_boxplot(aes(y = Value, x = data, color = data), outliers = F, show.legend = F) +
-  theme_minimal() +
-  theme(strip.background = element_rect(color = "black", fill = NULL, linewidth = 1),
-        panel.background = element_rect(color = "black", fill = NULL, linewidth = 1),
-        strip.text = element_text(size = 16),
-        axis.title = element_text(size = 16),
-        axis.text = element_text(size = 12)) + 
-  ylab("Value per sample") + 
-  xlab("Imputation") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
-dev.off()
-
 
 # Hap.py
-happy_files <- snakemake@input[["HAPPY"]]
-# happy_files <- list.files("/nesi/nobackup/uoa04053/tram/hihi/imputation_2autosomes/OUTPUT/ACCURACY",
-#                           ".+_[A-Z]+_accuracy.summary.csv", recursive = T, full.names = T)
 
-
-happy <- do.call(rbind, lapply(happy_files, function(f) {
-  # print(f)
-  hp <- read.csv(f)[1,]
-  tool <- basename(dirname(f))
-  hp$data <- tool
-  hp
-}))
-
-happy <- happy %>% 
-  pivot_longer(cols = c("METRIC.Recall", "METRIC.Precision", "METRIC.F1_Score"),
-               names_to = "Metrics", values_to = "Value") 
-happy$Metrics <- factor(happy$Metrics, levels = c("METRIC.Recall", "METRIC.Precision", "METRIC.F1_Score"))
-
-png(snakemake@output[["HAPPY"]], width = 800, height = 800)
-ggplot(happy) +
-  facet_grid(rows = vars(Metrics), scales = "free_x") +
-  geom_col(aes(y = Value, x = data, fill = data), show.legend = F) +
-  theme_minimal() +
-  theme(strip.background = element_rect(color = "black", fill = NULL, linewidth = 1),
-        panel.background = element_rect(color = "black", fill = NULL, linewidth = 1),
-        strip.text = element_text(size = 16),
-        axis.title = element_text(size = 16),
-        axis.text = element_text(size = 12)) + 
-  ylab("Value") + 
-  xlab("Imputation") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
-dev.off()
 
 # Customized accuracy metrics
 var_files <- snakemake@input[["METRICS_VAR"]]
-# var_files <- list.files("/home/tvi069/imputation/test/OUTPUT/ACCURACY", "accuracy_metrics_per_variant.tsv",
-#                         recursive = T, full.names = T)
+var_files <- list.files("/home/tvi069/imputation/test/OUTPUT/ACCURACY", "accuracy_metrics_per_variant.tsv",
+                        recursive = T, full.names = T)
 
 var <- do.call(rbind, lapply(var_files, function(f) {
   tool <- basename(dirname(f))
@@ -226,7 +145,7 @@ var <- var %>%
                names_to = "Metrics", values_to = "Value") 
 var$Truth_MAF <- sapply(var$Truth_ALT_Freq, function(x) min(c(x, 1-x)))
 var$MAF_bin <- cut(var$Truth_MAF, breaks = c(0, 0.05, 0.1, 0.25, 0.5), include.lowest = T)
-var$Metrics <- factor(var$Metrics, levels = c("Mismatch_1", "Mismatch_2", "Missing", "Recall", "Precision", "F1"))
+var$Metrics <- factor(var$Metrics, levels = c("Mismatch_1", "Mismatch_2", "Missing", "Precision", "Recall", "F1"))
 
 png(snakemake@output[["VARIANT"]], width = 1600, height = 900)
 ggplot(var) +
@@ -239,15 +158,13 @@ ggplot(var) +
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 12)) + 
   ylab("Value per variant") + 
-  xlab("Truth MAF") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
+  xlab("Truth MAF")
 dev.off()
 
 
 sam_files <- snakemake@input[["METRICS_SAM"]]
-# sam_files <- list.files("/home/tvi069/imputation/test/OUTPUT/ACCURACY", "accuracy_metrics_per_sample.tsv",
-#                         recursive = T, full.names = T)
+sam_files <- list.files("/home/tvi069/imputation/test/OUTPUT/ACCURACY", "accuracy_metrics_per_sample.tsv",
+                        recursive = T, full.names = T)
 
 sam <- do.call(rbind, lapply(sam_files, function(f) {
   tool <- basename(dirname(f))
@@ -263,7 +180,7 @@ sam$Metrics <- factor(sam$Metrics, levels = c("Mismatch_1", "Mismatch_2", "Missi
 
 png(snakemake@output[["SAMPLE"]], width = 1000, height = 800)
 ggplot(sam) +
-  facet_grid(rows = vars(Metrics), scales = "free_x") +
+  facet_grid(cols = vars(data), rows = vars(Metrics), scales = "free_x") +
   geom_boxplot(aes(y = Value, x = data, color = data), outliers = F, show.legend = F) +
   theme_minimal() +
   theme(strip.background = element_rect(color = "black", fill = NULL, linewidth = 1),
@@ -272,46 +189,5 @@ ggplot(sam) +
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 12)) + 
   ylab("Value per sample") + 
-  xlab("Imputation") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
-dev.off()
-
-# MAF
-var$Imputed_MAF <- sapply(var$Imputed_ALT_Freq, function(x) min(c(x, 1-x)))
-
-png(snakemake@output[["MAF"]], width = 1500, height = 300)
-ggplot(var, aes(y = Imputed_MAF, x = Truth_MAF, color = data)) +
-  facet_grid(cols = vars(data)) +
-  geom_point(alpha = 0.7, show.legend = F) +
-  geom_smooth(method = lm, se = T, show.legend = F) +
-  theme_minimal() +
-  theme(strip.background = element_rect(color = "black", fill = NULL, linewidth = 1),
-        panel.background = element_rect(color = "black", fill = NULL, linewidth = 1),
-        strip.text = element_text(size = 16),
-        axis.title = element_text(size = 16),
-        axis.text = element_text(size = 12)) + 
-  xlab("Groundtruth MAF") + 
-  ylab("Imputed MAF") +
-  scale_color_manual(values = cols) +
-  scale_fill_manual(values = cols)
-dev.off()
-
-
-# Benchmark
-
-benchmark_files <- list.files(snakemake@params[["BENCHMARK"]], full.names = T)
-# benchmark_files <- list.files("/home/tvi069/imputation/test/OUTPUT/BENCHMARK",
-#                               full.names = T)
-
-benchmark <- do.call(rbind, lapply(benchmark_files, function(f) {
-  b <- data.frame(Imputation = gsub(".txt", "", basename(f)),
-                  read.delim(f))
-  # b$Imputation <- gsub(".txt", "", basename(f))
-  b
-}))
-
-png(snakemake@output[["BENCHMARK"]], width=1000, height=300)
-p<-tableGrob(benchmark)
-grid.arrange(p)
+  xlab("Imputation")
 dev.off()

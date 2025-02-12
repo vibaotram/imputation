@@ -83,3 +83,9 @@ QUILT:
     OTHER: "--expRate=1"
     THREADS: 6
     MEM_MB: 8G
+
+STAIRWAY_PLOT:
+    POPFILE: "test/INPUT/pops_file.txt"
+    SEQUENCE_LENGTH: 10000000
+    MUT_RATE: 1e-7
+    THREADS: 6

@@ -102,3 +102,9 @@ RUN apt-get install -yq bc
 
 # R packages
 RUN Rscript -e 'install.packages("vcfR")'
+
+# VCF2SFS AND STAIRWAY
+RUN git clone https://github.com/shenglin-liu/vcf2sfs.git
+RUN git clone https://github.com/xiaoming-liu/stairway-plot-v2.git && \
+    unzip stairway-plot-v2/stairway_plot_v2.1.2.zip
+
