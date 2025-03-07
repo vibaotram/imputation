@@ -32,17 +32,7 @@ REFfile.close()
 
 rule IMPUTATION:
     input:
-        NGSRELATE_BAM = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "BAM", config['PREFIX_NAME'] + ".ngsrelate"),
-        NGSRELATE_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_{tool}.ngsrelate"), tool = IMPUTATION),
-        KGD_LCS = os.path.join(config['OUTPUT_DIR'], "KGD", "LCS", config['PREFIX_NAME'] + "_G5.txt"),
-        KGD_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_G5.txt"), tool = IMPUTATION)
-
-        # NGSRELATE = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", config['PREFIX_NAME'] + ".ngsrelate"),
-        # BEAGLE = os.path.join(config['OUTPUT_DIR'], "BEAGLE", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz") if config['IMPUTATION']['BEAGLE'] else (),
-        # GLIMPSE = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz") if config['IMPUTATION']['GLIMPSE'] else (),
-        # STITCH = os.path.join(config['OUTPUT_DIR'], "STITCH", config['PREFIX_NAME'] + "_STITCH.vcf.gz") if config['IMPUTATION']['STITCH'] else (),
-        # GENEIMP = os.path.join(config['OUTPUT_DIR'], "GENEIMP", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz") if config['IMPUTATION']['GENEIMP'] else (),
-        # QUILT = os.path.join(config['OUTPUT_DIR'], "QUILT", config['PREFIX_NAME'] + "_QUILT.vcf.gz") if config['IMPUTATION']['QUILT'] else ()
+        expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION)
 
 
 #-------------PREPARE--------------#
@@ -128,8 +118,10 @@ rule FILTERVCF_REF:
         tabix -f {output.REF}
 
         # filter GROUNDTRUTH for same sites as in REF
-        bcftools view -R {output.REF} --threads {threads} -Oz -o {output.TRUTH} {input.TRUTH}
-        tabix -f {output.TRUTH}
+        if [[ -n {input.TRUTH} ]]; then
+            bcftools view -R {output.REF} --threads {threads} -Oz -o {output.TRUTH} {input.TRUTH}
+            tabix -f {output.TRUTH}
+        fi
         '''
 
 
@@ -156,7 +148,8 @@ rule FILTERVCF_TARGET:
 rule KGD_LCS:
     input: rules.FILTERVCF_TARGET.output
     output:
-        os.path.join(config['OUTPUT_DIR'], "KGD", "LCS", config['PREFIX_NAME'] + "_G5.txt")
+        RELATEDNESS = os.path.join(config['OUTPUT_DIR'], "KGD", "LCS", config['PREFIX_NAME'] + "_pairwise_relatedness.txt"),
+        INBREEDING = os.path.join(config['OUTPUT_DIR'], "KGD", "LCS", config['PREFIX_NAME'] + "_inbreeding_coefficient.txt")
     params:
         KGD_GMATRIX = os.path.abspath("scripts/KGD/GBS-Chip-Gmatrix.R")
     log: os.path.join(config['OUTPUT_DIR'], "LOG", "KGD.log")
@@ -166,7 +159,8 @@ rule KGD_LCS:
 rule KGD_TRUTH:
     input: rules.FILTERVCF_REF.output.TRUTH
     output:
-        os.path.join(config['OUTPUT_DIR'], "KGD", "TRUTH", config['PREFIX_NAME'] + "_G5.txt")
+        RELATEDNESS = os.path.join(config['OUTPUT_DIR'], "KGD", "TRUTH", config['PREFIX_NAME'] + "_pairwise_relatedness.txt"),
+        INBREEDING = os.path.join(config['OUTPUT_DIR'], "KGD", "TRUTH", config['PREFIX_NAME'] + "_inbreeding_coefficient.txt")
     params:
         KGD_GMATRIX = os.path.abspath("scripts/KGD/GBS-Chip-Gmatrix.R")
     log: os.path.join(config['OUTPUT_DIR'], "LOG", "KGD.log")
@@ -593,7 +587,8 @@ rule KGD_IMPUTED:
     input:
         os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
     output:
-        os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_G5.txt")
+        RELATEDNESS = os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_pairwise_relatedness.txt"),
+        INBREEDING = os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_inbreeding_coefficient.txt")
     params:
         KGD_GMATRIX = os.path.abspath("scripts/KGD/GBS-Chip-Gmatrix.R")
     threads: 1
@@ -601,7 +596,7 @@ rule KGD_IMPUTED:
         "scripts/KGD.R"
 
 
-rule IMPUTATION_QUALITY_SCORE:
+rule GT4HAPPY:
     input:
         TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
@@ -627,7 +622,7 @@ rule IMPUTATION_QUALITY_SCORE:
         bcftools view -R {input.TRUTH} -Oz -o {params.VCF_GT} {params.VCF_TMP}
         tabix -f {params.VCF_GT}
         rm {params.VCF_TMP}*
-        python3 /imputation_accuracy_calculator/Compare_imputation_to_WGS.py --wgs {input.TRUTH} --imputed {params.VCF_GT} --sout {params.SAMPLE_CP} --vout {params.VARIANT_CP}
+        # python3 /imputation_accuracy_calculator/Compare_imputation_to_WGS.py --wgs {input.TRUTH} --imputed {params.VCF_GT} --sout {params.SAMPLE_CP} --vout {params.VARIANT_CP}
         vcftools --gzvcf {input.TRUTH} --freq2 --out {params.TRUTH_FREQ}
         # Rscript scripts/accuracy_freq.R {params.VARIANT_CP} {params.TRUTH_FREQ}.frq
         '''
@@ -724,10 +719,11 @@ rule STAIRWAY_IMPUTED:
         # expand(os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}", "{subpop}", config['PREFIX_NAME'] + "_{tool}_{subpop}_STAIRWAY.png"), subpop = POPS, tool = "{tool}")
     params:
         BLUEPRINT = "scripts/template.blueprint",
-        SEQ_LEN = config['STAIRWAY_PLOT']['SEQUENCE_LENGTH'],
+        SEQ_LEN = str(config['STAIRWAY_PLOT']['SEQUENCE_LENGTH']),
         MU = config['STAIRWAY_PLOT']['MUT_RATE'],
         PLOT_TITLE = "{tool}-" + config['PREFIX_NAME'],
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}")
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}"),
+        PREFIX_NAME = config['PREFIX_NAME']
     script: "scripts/run_SFS_Stairway.R"
 
 
@@ -743,7 +739,8 @@ rule STAIRWAY_TRUTH:
         SEQ_LEN = config['STAIRWAY_PLOT']['SEQUENCE_LENGTH'],
         MU = config['STAIRWAY_PLOT']['MUT_RATE'],
         PLOT_TITLE = "Groundtruth-"+ config['PREFIX_NAME'],
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH")
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH"),
+        PREFIX_NAME = config['PREFIX_NAME']
     script: "scripts/run_SFS_Stairway.R"
 
 
@@ -761,9 +758,7 @@ rule ACCURACY:
         NGSRELATE_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_{tool}.ngsrelate"), tool = IMPUTATION),
         KGD_LCS = rules.KGD_LCS.output,
         KGD_TRUTH = rules.KGD_TRUTH.output,
-        KGD_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_G5.txt"), tool = IMPUTATION),
-        IQS_VAR = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_per_variant_results.txt"), tool = IMPUTATION),
-        IQS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_per_sample_results.txt"), tool = IMPUTATION),
+        KGD_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_inbreeding_coefficient.txt"), tool = IMPUTATION),
         METRICS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_sample.tsv"), tool = IMPUTATION),
         METRICS_VAR = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_variant.tsv"), tool = IMPUTATION),
         HAPPY = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION),
@@ -782,14 +777,6 @@ rule ACCURACY:
         KGD = report(
                 os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_G5.png"),
                 labels={"figure": "3 - KGD Relatedness"}
-            ),
-        IQS_VAR = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_IQS_variant.png"),
-                labels={"figure": "4 - IAC Results Per Variant"}
-            ),
-        IQS_SAM = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_IQS_sample.png"),
-                labels={"figure": "5 - IAC Results Per Sample"}
             ),
         HAPPY = report(
                 os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_happy.png"),
@@ -816,20 +803,4 @@ rule ACCURACY:
     threads: 1
     script:
         "scripts/plot_imputation_accuracy.R"
-
-
-# rule ACCURACY:
-#     input:
-#         IMPUTATION = rules.IMPUTATION.output,
-#         KGD_LCS = rules.KGD_LCS.output,
-#         KGD_TRUTH = rules.KGD_TRUTH.output,
-#         NGSRELATE_BAM = rules.NGSRELATE_BAM.output,
-#         NGSRELATE_TRUTH = rules.NGSRELATE_TRUTH.output,
-#         NGSRELATE_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_{tool}.ngsrelate"), tool = IMPUTATION),
-#         KGD_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_G5.txt"), tool = IMPUTATION),
-#         IQS_VAR = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_per_variant_results.txt"), tool = IMPUTATION),
-#         IQS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_per_sample_results.txt"), tool = IMPUTATION),
-#         METRICS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_sample.tsv"), tool = IMPUTATION),
-#         METRICS_VAR = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_variant.tsv"), tool = IMPUTATION),
-#         HAPPY = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION)
 

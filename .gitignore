@@ -1,5 +1,10 @@
-.cache/*
-.conda/*
-.snakemake/*
-.condarc
+.*
 test/*
+envs/*
+scripts/imputation_accuracy_calculator
+scripts/stairway*
+scripts/KGD/Example
+scripts/KGD/ParExample
+scripts/KGD/.*
+report*
+snakefile_backup

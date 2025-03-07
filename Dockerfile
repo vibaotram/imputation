@@ -108,3 +108,5 @@ RUN git clone https://github.com/shenglin-liu/vcf2sfs.git
 RUN git clone https://github.com/xiaoming-liu/stairway-plot-v2.git && \
     unzip stairway-plot-v2/stairway_plot_v2.1.2.zip
 
+# Fix some packages
+RUN pip install nbformat

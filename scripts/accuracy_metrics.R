@@ -54,7 +54,7 @@ accuracy_metrics <- function(actual, predicted, ncores) {
   
   cat("Counting TP, FP, FN, and mismatches per variant and per sample. This might take a while\n")
   counts <- mclapply(rownames(actual_num), function(i) {
-    mapply(function(x, y, TP = NA, FP = NA, FN = NA, mismatch_1 = NA, mismatch_2 = NA, missing = NA) {
+    mapply(function(x, y, TP = NA, FP = NA, FN = NA, mismatch_1 = NA, mismatch_2 = NA, missing = NA, abs_match = 0) {
       if (!is.na(x) && !is.na(y)) { ## if no missing gt in both sets, counts the number of matched and mismatched
         mismatched <- abs(x - y)
         matched <- 2 - mismatched
@@ -71,6 +71,7 @@ accuracy_metrics <- function(actual, predicted, ncores) {
         } else {
           mismatch_1 <- 0
           mismatch_2 <- 0
+          abs_match <- 1
         }
         missing <- 0
       } else if (!is.na(x) && is.na(y)) { ## if predicted gt is missing, count 2 for FN
@@ -81,11 +82,11 @@ accuracy_metrics <- function(actual, predicted, ncores) {
         mismatch_2 <- 0
         missing <- 2
       } ## if actual gt is missing, do nothing
-      return(c(TP, FP, FN, mismatch_1, mismatch_2, missing))
+      return(c(TP, FP, FN, mismatch_1, mismatch_2, missing, abs_match))
     }, actual_num[i,], predicted_num[i,])
   }, mc.cores = ncores)
   
-  cat("Calculating Recall, Precision, F1 score\n")
+  cat("Calculating Recall, Precision, F1 score, IQS\n")
   actual_alt_freq <- rowMeans(actual_num, na.rm = T)/2
   predicted_alt_freq <- rowMeans(predicted_num, na.rm = T)/2
   
@@ -124,12 +125,36 @@ accuracy_metrics <- function(actual, predicted, ncores) {
   miss_per_variant <- rowMeans(miss_mat, na.rm = T)/2
   miss_per_sample <- colMeans(miss_mat, na.rm = T)/2
   
+  absmatch_mat <- t(sapply(counts, function(c) as.numeric(c[7,])))
+  colnames(absmatch_mat) <- colnames(actual_num)
+  po_per_variant <- rowMeans(absmatch_mat, na.rm = T)
+  po_per_sample <- colMeans(absmatch_mat, na.rm = T)
+  
+  pc_per_variant <- sapply(1:nrow(actual_num), function(r) {
+    freq_actual <- (table(c(actual_num[r,], 0,1,2))-1)/length(actual_num[r,])
+    freq_predicted <- (table(c(predicted_num[r,], 0,1,2))-1)/length(actual_num[r,])
+    pc <- sum(freq_actual*freq_predicted)
+    pc
+  })
+  iqs_per_variant <- (po_per_variant-pc_per_variant)/(1-pc_per_variant)
+  
+  pc_per_sample <- sapply(1:ncol(actual_num), function(c) {
+    freq_actual <- (table(c(actual_num[,c], 0,1,2))-1)/length(actual_num[,c])
+    freq_predicted <- (table(c(predicted_num[,c], 0,1,2))-1)/length(actual_num[,c])
+    pc <- sum(freq_actual*freq_predicted)
+    pc
+  })
+  iqs_per_sample <- (po_per_sample-pc_per_sample)/(1-pc_per_sample)
+  
   var <- data.frame(ID = rownames(actual_num),
                     Truth_ALT_Freq = actual_alt_freq,
                     Imputed_ALT_Freq = predicted_alt_freq,
                     Mismatch_1 = mm1_per_variant,
                     Mismatch_2 = mm2_per_variant,
                     Missing = miss_per_variant,
+                    Po = po_per_variant,
+                    Pc = pc_per_variant,
+                    IQS = iqs_per_variant,
                     TP = TP_per_variant,
                     FP = FP_per_variant,
                     FN = FN_per_variant)
@@ -142,6 +167,9 @@ accuracy_metrics <- function(actual, predicted, ncores) {
                     Mismatch_1 = mm1_per_sample,
                     Mismatch_2 = mm2_per_sample,
                     Missing = miss_per_sample,
+                    Po = po_per_sample,
+                    Pc = pc_per_sample,
+                    IQS = iqs_per_sample,
                     TP = TP_per_sample,
                     FP = FP_per_sample,
                     FN = FN_per_sample)
@@ -158,9 +186,21 @@ metrics <- accuracy_metrics(truth_gt, imputed_gt, ncores)
 fwrite(metrics$variant, snakemake@output[[1]], sep = "\t")
 fwrite(metrics$sample, snakemake@output[[2]], sep = "\t")
 
-# metrics_variant <- metrics$variant
-# metrics_variant <- var
-# metrics_variant$ALT_FREQ_bin <- cut(metrics_variant$Truth_ALT_Freq, breaks = c(0, 0.05, 0.1, 0.5, 0.9, 0.95, 1), include.lowest = T)
+# imputed <- "~/imputation/test/OUTPUT/ACCURACY/BEAGLE/p4_GT.vcf.gz"
+# imputed <- "~/imputation/test/OUTPUT/ACCURACY/STITCH/p4_GT.vcf.gz"
+# truth <- "~/imputation/test/OUTPUT/VCF/p4_GROUNDTRUTH.vcf.gz"
+# t <- read.table("~/imputation/test/OUTPUT/ACCURACY/BEAGLE/p4_BEAGLE_per_variant_results.txt", header = T)
+# t <- read.table("~/imputation/test/OUTPUT/ACCURACY/STITCH/p4_STITCH_per_variant_results.txt", header = T)
+# t$position <- as.numeric(gsub(".+:", "", t$position))
+
+# metrics$variant$position <- rownames(metrics$variant)
+# metrics$variant$position <- gsub(".+\\_", "", metrics$variant$position)
+
+# d <- merge(t, metrics$variant, by = "position")
+
+# ggplot(d, aes(x = IQS.x, y = IQS.y)) + geom_point() + theme_minimal() +
+#   xlab("IQS by github tool") +
+#   ylab("IQS by custom script")
 
 # metrics_variant %>% 
 #   filter(!is.nan(Imputed_ALT_Freq)) %>% 

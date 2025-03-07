@@ -4,9 +4,9 @@ vcffile <- snakemake@input[["VCF"]]
 popfile <- snakemake@input[["POPFILE"]]
 template_bp <- snakemake@params[["BLUEPRINT"]]
 outdir <- snakemake@params[['OUTDIR']]
-seqlength <- as.character(snakemake@params[['SEQ_LEN']])
+seqlength <- snakemake@params[['SEQ_LEN']]
 mu <- snakemake@params[['MU']]
-plot_title <- snakemake@params[['PLOT_TITLE']]
+plot_title <- snakemake@param[['PLOT_TITLE']]
 output <- snakemake@output[[1]]
 stairway_plot_es_path <- "/stairway_plot_v2.1.2/stairway_plot_es"
 
@@ -19,7 +19,7 @@ blueprint <- readLines(template_bp)
 names(blueprint) <- gsub(":.+", "", blueprint)
 blueprint["L"] <- paste(c("L:", seqlength), collapse = " ")
 blueprint["mu"] <- paste(c("mu:", mu), collapse = " ")
-wd <- getwd()
+blueprint["project_dir"] <- "project_dir: two-epoch_fold"
 
 for (pop in unique(pops[,2])) {
   sfsraw <- gt2sfs.raw(gt, pop)
@@ -29,16 +29,15 @@ for (pop in unique(pops[,2])) {
   blueprint["SFS"] <- paste(c("SFS:", folded_sfs[1:nind]), collapse = " ")
   blueprint["popid"] <- paste(c("popid:", pop), collapse = " ")
   blueprint["nseq"] <- paste(c("nseq:", nind*2), collapse = " ")
-  blueprint["plot_title"] <- paste0("plot_title: ", plot_title, "-", pop)
+  blueprint["plot_title"] <- paste(plot_title, "- subpop", pop)
   pop_dir <- paste0(outdir, "/", pop)
-  # blueprint["project_dir"] <- paste("project_dir:", pop_dir)
   
   if (dir.exists(pop_dir)) unlink(pop_dir, recursive = T)
   dir.create(pop_dir, recursive = T)
   file.copy(stairway_plot_es_path, pop_dir, recursive = T)
   setwd(pop_dir)
   system("pwd")
-  updated_bp <- paste0(pop, ".blueprint")
+  updated_bp <- paste0(pop_dir, "/", pop, ".blueprint")
   
   writeLines(blueprint, updated_bp)
   
@@ -49,8 +48,7 @@ for (pop in unique(pops[,2])) {
   system(run_staiway_cmd)
   
   unlink("stairway_plot_es", recursive = T)
-  setwd(wd)
 }
 
-final_file <- paste0(outdir, "/", unique(pops[,2]), "/", "two-epoch_fold", "/", paste0(plot_title, "-", unique(pops[,2])), ".summary[.png|.pdf]")
+final_file <- paste0(outdir, "/", unique(pops[,2]), "/", blueprint["project_dir"], "/", blueprint["project_dir"], ".final.summary[.png|.pdf]")
 writeLines(final_file, output)

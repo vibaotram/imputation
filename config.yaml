@@ -1,11 +1,13 @@
+# Input data
 TARGET_BAM: "/home/tvi069/imputation/test/INPUT/BAM/bamlist" # BAM.BAI IS REQUIRED BY GLIMPSE
-OUTPUT_DIR: "/home/tvi069/imputation/test/OUTPUT"
-PREFIX_NAME: "p4"
-# PREFIX_NAME: "p1_random_1000_30gen_target1"
 
 REFERENCE_SEQ: "/home/tvi069/imputation/test/INPUT/REF/chr15_ref_modN.fa"
 REFERENCE_VCFGZ: "/home/tvi069/imputation/test/INPUT/REF/ref_test.vcf.gz" 
 GROUNDTRUTH: "/home/tvi069/imputation/test/INPUT/REF/test_truth.vcf.gz"
+
+# Software parameters
+OUTPUT_DIR: "/home/tvi069/imputation/test/OUTPUT"
+PREFIX_NAME: "impute"
 
 IMPUTATION: # True/False
     BEAGLE: True
@@ -85,7 +87,7 @@ QUILT:
     MEM_MB: 8G
 
 STAIRWAY_PLOT:
-    POPFILE: "test/INPUT/pops_file.txt"
+    POPFILE: "/home/tvi069/imputation/test/INPUT/pops_file.txt"
     SEQUENCE_LENGTH: 10000000
     MUT_RATE: 1e-7
     THREADS: 6

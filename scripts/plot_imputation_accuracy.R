@@ -110,7 +110,7 @@ iqs <- iqs %>%
 iqs$MAF_bin <- cut(iqs$WGS_MAF, breaks = c(0, 0.05, 0.1, 0.25, 0.5), include.lowest = T)
 iqs$Metrics <- factor(iqs$Metrics, levels = c("recall", "precision", "F.score", "IQS"))
 
-png(snakemake@output[["IQS"]], width = 1500, height = 800)
+png(snakemake@output[["IQS_VAR"]], width = 1500, height = 800)
 ggplot(iqs) +
   facet_grid(cols = vars(data), rows = vars(Metrics)) +
   geom_boxplot(aes(y = Value, x = MAF_bin, color = data), outliers = F, show.legend = F) +
