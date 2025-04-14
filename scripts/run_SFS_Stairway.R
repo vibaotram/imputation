@@ -6,7 +6,7 @@ template_bp <- snakemake@params[["BLUEPRINT"]]
 outdir <- snakemake@params[['OUTDIR']]
 seqlength <- snakemake@params[['SEQ_LEN']]
 mu <- snakemake@params[['MU']]
-plot_title <- snakemake@param[['PLOT_TITLE']]
+plot_title <- snakemake@params[['PLOT_TITLE']]
 output <- snakemake@output[[1]]
 stairway_plot_es_path <- "/stairway_plot_v2.1.2/stairway_plot_es"
 

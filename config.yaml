@@ -13,7 +13,7 @@ IMPUTATION: # True/False
     BEAGLE: True
     GLIMPSE: True
     STITCH: True
-    GENEIMP: True
+    GENEIMP: False
     QUILT: True
 
 NGSRELATE:

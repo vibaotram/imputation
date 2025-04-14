@@ -601,14 +601,11 @@ rule GT4HAPPY:
         TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         REF = config['REFERENCE_SEQ']
-    output: multiext(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME']), "_4compare.vcf.gz", "_{tool}_per_sample_results.txt", "_{tool}_per_variant_results.txt")
+    output: os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz")
     params:
         TRUTH_FREQ = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", "truth"),
         SAMPLE = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + ".sample"),
         VCF_TMP = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_TMP.vcf.gz"),
-        VCF_GT = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz"),
-        SAMPLE_CP = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_per_sample_results.txt"),
-        VARIANT_CP = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_per_variant_results.txt"),
         OUTNAME_HP = config['PREFIX_NAME'] + "_{tool}_accuracy"
     threads: 1
     log: os.path.join(config['OUTPUT_DIR'], "LOG", "COMPARE_{tool}.log")
@@ -619,12 +616,10 @@ rule GT4HAPPY:
         bcftools query -l {input.TRUTH} > {params.SAMPLE}
         bcftools annotate -x ^FORMAT/GT {input.TEST} | bcftools view -S {params.SAMPLE} -Oz -o {params.VCF_TMP}
         tabix -f {params.VCF_TMP}
-        bcftools view -R {input.TRUTH} -Oz -o {params.VCF_GT} {params.VCF_TMP}
-        tabix -f {params.VCF_GT}
+        bcftools view -R {input.TRUTH} -Oz -o {output} {params.VCF_TMP}
+        tabix -f {output}
         rm {params.VCF_TMP}*
-        # python3 /imputation_accuracy_calculator/Compare_imputation_to_WGS.py --wgs {input.TRUTH} --imputed {params.VCF_GT} --sout {params.SAMPLE_CP} --vout {params.VARIANT_CP}
         vcftools --gzvcf {input.TRUTH} --freq2 --out {params.TRUTH_FREQ}
-        # Rscript scripts/accuracy_freq.R {params.VARIANT_CP} {params.TRUTH_FREQ}.frq
         '''
 
 rule VARIANT_ACCURACY:
@@ -642,7 +637,7 @@ rule VARIANT_ACCURACY:
 
 rule HAPLOTYPE_ACCURACY:
     input:
-        TEST = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz"),
+        TEST = rules.GT4HAPPY.output,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         REF = config['REFERENCE_SEQ']
     output: os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv")
@@ -690,21 +685,46 @@ rule FST:
             awk -F'\t' -v val=$s '$2 == val' {input.POPFILE} > $SUBFILE
             fst_param="${{fst_param}}--weir-fst-pop ${{SUBFILE}} "
         done
-        
+
+        echo -e "tImputation\tPairwise\tFst" > fst.tsv
         cd {params.OUTDIR}
-        rm -f {output}
-        for vcf in {input.IMPUTE}; do
-            echo ${{vcf}}
-            tool=$(basename $(dirname ${{vcf}}))
-            echo ${{tool}}
-            vcftools --gzvcf ${{vcf}} ${{fst_param}} --out ${{tool}} > ${{tool}}.log 2>&1
-            fst=$(grep "mean" ${{tool}}.log | cut -d" " -f7)
-            echo -e "${{tool}}\t${{fst}}" >> {output}
+        for s1 in {POPS}; do
+            for s2 in {POPS}; do
+                if [[ ! $s1 < $s2 ]]; then
+                    continue
+                else
+                    vcftools --gzvcf {input.TRUTH} \
+                    --weir-fst-pop subpop${{s1}}.txt \
+                    --weir-fst-pop subpop${{s2}}.txt \
+                    --out TRUTH_subpop_${{s1}}_${{s2}} > TRUTH_subpop_${{s1}}_${{s2}}.log 2>&1
+                    fst=$(grep "mean" TRUTH_subpop_${{s1}}_${{s2}}.log | cut -d" " -f7)
+                    echo -e "TRUTH\t${{s1}}-${{s2}}\t${{fst}}" >> {output}
+                    
+                    for i in {input.IMPUTE}; do
+                        tool=$(basename $(dirname $i))
+                        vcftools --gzvcf $i \
+                        --weir-fst-pop subpop${{s1}}.txt \
+                        --weir-fst-pop subpop${{s2}}.txt \
+                        --out ${{tool}}_subpop_${{s1}}_${{s2}} > ${{tool}}_subpop_${{s1}}_${{s2}}.log 2>&1
+                        fst=$(grep "mean" ${{tool}}_subpop_${{s1}}_${{s2}}.log | cut -d" " -f7)
+                        echo -e "${{tool}}\t${{s1}}-${{s2}}\t${{fst}}" >> {output}
+                    done
+                fi
+            done
         done
+        # rm -f {output}
+        # for vcf in {input.IMPUTE}; do
+        #     echo ${{vcf}}
+        #     tool=$(basename $(dirname ${{vcf}}))
+        #     echo ${{tool}}
+        #     vcftools --gzvcf ${{vcf}} ${{fst_param}} --out ${{tool}} > ${{tool}}.log 2>&1
+        #     fst=$(grep "mean" ${{tool}}.log | cut -d" " -f7)
+        #     echo -e "${{tool}}\t${{fst}}" >> {output}
+        # done
         
-        vcftools --gzvcf {input.TRUTH} ${{fst_param}} --out TRUTH > TRUTH.log 2>&1
-        fst=$(grep "mean" TRUTH.log | cut -d" " -f7)
-        echo -e "TRUTH\t${{fst}}" >> {output}
+        # vcftools --gzvcf {input.TRUTH} ${{fst_param}} --out TRUTH > TRUTH.log 2>&1
+        # fst=$(grep "mean" TRUTH.log | cut -d" " -f7)
+        # echo -e "TRUTH\t${{fst}}" >> {output}
         
         '''
 
@@ -756,9 +776,9 @@ rule ACCURACY:
         NGSRELATE_BAM = rules.NGSRELATE_BAM.output,
         NGSRELATE_TRUTH = rules.NGSRELATE_TRUTH.output,
         NGSRELATE_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_{tool}.ngsrelate"), tool = IMPUTATION),
-        KGD_LCS = rules.KGD_LCS.output,
-        KGD_TRUTH = rules.KGD_TRUTH.output,
-        KGD_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_inbreeding_coefficient.txt"), tool = IMPUTATION),
+        # KGD_LCS = rules.KGD_LCS.output.RELATEDNESS,
+        # KGD_TRUTH = rules.KGD_TRUTH.output.RELATEDNESS,
+        # KGD_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_pairwise_relatedness.txt"), tool = IMPUTATION),
         METRICS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_sample.tsv"), tool = IMPUTATION),
         METRICS_VAR = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_variant.tsv"), tool = IMPUTATION),
         HAPPY = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION),
@@ -774,10 +794,10 @@ rule ACCURACY:
                 # category="Output (Imputed data)",
                 labels={"figure": "2 - ngsRelate Inbreeding Coefficient"}
             ),
-        KGD = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_G5.png"),
-                labels={"figure": "3 - KGD Relatedness"}
-            ),
+        # KGD = report(
+        #         os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_G5.png"),
+        #         labels={"figure": "3 - KGD Relatedness"}
+        #     ),
         HAPPY = report(
                 os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_happy.png"),
                 labels={"figure": "6 - Hap.py Results"}

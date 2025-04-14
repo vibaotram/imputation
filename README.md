@@ -39,7 +39,7 @@ Analyses will be performed on the imputed genotypes:
 
 ## Evaluation of imputation performance
 
-If a ground truth is present, imputation accuracy will be measure by comparing the imputed genotypes and the truth genotypes. Different metrics, true positives (TP), false positive (FP), false negative (FN), recall, precisiom, F1 score, concordance (Po), chance agreement (Pc), imputation quality score (IQS) will be calculated the basis of variant and sample. 
+If a ground truth is present, imputation accuracy will be measured by comparing the imputed genotypes and the truth genotypes. Different metrics, true positives (TP), false positive (FP), false negative (FN), recall, precisiom, F1 score, concordance (Po), chance agreement (Pc), imputation quality score (IQS) will be calculated the basis of variant and sample. 
 
 - TP: number of matching alleles
 - FP: number of mismatched alleles and missing alleles
