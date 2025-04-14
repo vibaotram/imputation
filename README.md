@@ -56,3 +56,6 @@ In addition, population genetic analyses will also be performed on the ground tr
 ## Software requirement
 - Snakemake >=8.20.0
 - Singularity >= 3.0.0
+
+## Run the pipeline
+Some scripts to run the pipeline are written in this [bash file](./run_test.sh)
