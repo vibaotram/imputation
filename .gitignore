@@ -1,10 +1,10 @@
 .*
-test/*
-envs/*
-scripts/imputation_accuracy_calculator
-scripts/stairway*
-scripts/KGD/Example
-scripts/KGD/ParExample
-scripts/KGD/.*
+test/OUTPUT/*
+workflow/envs/*
+workflow/scripts/imputation_accuracy_calculator
+workflow/scripts/stairway*
+workflow/scripts/KGD/Example
+workflow/scripts/KGD/ParExample
+workflow/scripts/KGD/.*
 report*
 snakefile_backup

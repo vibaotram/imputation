@@ -15,7 +15,7 @@ The pipeline consists of 3 main parts: imputation by multiple choices of tool, p
 
 - TARGET_BAM:       a list of BAM files for imputation targets
 - REFERENCE_SEQ:    a reference genome in fasta format
-- REFERENCE_VCFGZ:  reference panel in vcf.gz format 
+- REFERENCE_VCFGZ:  reference panel in vcf.gz format, index file is required 
 - GROUNDTRUTH:      ground truth genotypes in vcf.gz format, if available
 
 
@@ -57,5 +57,5 @@ In addition, population genetic analyses will also be performed on the ground tr
 - Snakemake >=8.20.0
 - Singularity >= 3.0.0
 
-## Run the pipeline
-Some scripts to run the pipeline are written in this [bash file](./run_test.sh)
+## Run the pipeline with test dataset
+Some scripts to test the pipeline are written in this [bash file](./run_test.sh)
