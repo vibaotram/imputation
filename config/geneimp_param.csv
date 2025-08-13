@@ -1,0 +1,2 @@
+klthresh,flanksize,numfilterhaps,filtermethod
+50,0.5,10,"pairrand"

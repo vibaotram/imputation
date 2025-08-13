@@ -1,4 +1,7 @@
+from snakemake.utils import Paramspace
 import pandas as pd
+import re
+
 container: "docker://vibaotram/imputation:1.4"
 
 
@@ -29,10 +32,49 @@ for line in REFfile:
         CHROM.append(line[1:-1])
 REFfile.close()
 
+stitch_add=os.path.isfile(config["STITCH"]["PARAM"])
+if stitch_add:
+    stitch_paramspace = Paramspace(pd.read_csv(config["STITCH"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
+else:
+    stitch_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
+
+beagle_add=os.path.isfile(config["BEAGLE"]["PARAM"])
+if beagle_add:
+    beagle_paramspace = Paramspace(pd.read_csv(config["BEAGLE"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
+else:
+    beagle_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
+
+geneimp_add=os.path.isfile(config["GENEIMP"]["PARAM"])
+if geneimp_add:
+    geneimp_paramspace = Paramspace(pd.read_csv(config["GENEIMP"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
+else:
+    geneimp_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
+
+class QuiltParamFile(Exception):
+    pass
+
+quilt_add=os.path.isfile(config["QUILT"]["PARAM"])
+if quilt_add:
+    quilt_paramspace = Paramspace(pd.read_csv(config["QUILT"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
+else:
+    raise QuiltParamFile("A param file for QUILT must be provided in the config file")
+
+
+glimpsePHASE_add=os.path.isfile(config["GLIMPSE"]["GLIMPSE_PHASE_PARAM"])
+if glimpsePHASE_add:
+    glimpsePHASE_paramspace = Paramspace(pd.read_csv(config["GLIMPSE"]["GLIMPSE_PHASE_PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
+else:
+    glimpsePHASE_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
+
+
 rule IMPUTATION:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION)
-
+        # expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION)
+        expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns),
+        expand(os.path.join(config['OUTPUT_DIR'], "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns),
+        expand(os.path.join(config['OUTPUT_DIR'], "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns),
+        expand(os.path.join(config['OUTPUT_DIR'], "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_QUILT.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns),
+        expand(os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns)
 
 #-------------PREPARE--------------#
 #-------------TARGET---------------#
@@ -220,13 +262,13 @@ rule BEAGLE:
     input:
         TARGET = rules.FILTERVCF_TARGET.output,
         REF = rules.REF_BEAGLE_PHASING.output
-    output: os.path.join(config['OUTPUT_DIR'], "BEAGLE", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz")
+    output: os.path.join(config['OUTPUT_DIR'], "BEAGLE", f"{beagle_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz")
     threads: config['BEAGLE']['THREADS']
     params:
-        OUT = os.path.join(config['OUTPUT_DIR'], "BEAGLE", config['PREFIX_NAME'] + "_BEAGLE"),
-        PARAM = config['BEAGLE']['PARAM']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", "BEAGLE.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "BEAGLE.log")
+        OUT = os.path.join(config['OUTPUT_DIR'], "BEAGLE", f"{beagle_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_BEAGLE"),
+        PARAM = f"{beagle_paramspace.wildcard_pattern}".replace("~", " ") if beagle_add else ""
+    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"BEAGLE_{beagle_paramspace.wildcard_pattern}.txt")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"BEAGLE_{beagle_paramspace.wildcard_pattern}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -296,14 +338,14 @@ rule GLIMPSE_PHASE:
         BAMlist = config['TARGET_BAM'],
         CHUNK = rules.GLIMPSE_CHUNK.output,
         BIN = rules.GLIMPSE_SPLIT_REFERENCE.output
-    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "IMPUTE", "{CHROM}", config['PREFIX_NAME'] + ".IMPUTEDLIST")
+    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "IMPUTE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME'] + ".IMPUTEDLIST")
     params:
         BIN = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME']),
-        OUTNAME = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "IMPUTE", "{CHROM}", config['PREFIX_NAME']),
-        PARAM = config['GLIMPSE']['GLIMPSE_PHASE_PARAM']
+        OUTNAME = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "IMPUTE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME']),
+        PARAM = f"--{glimpsePHASE_paramspace.wildcard_pattern}".replace("~", " ") if glimpsePHASE_add else ""
     threads: config['GLIMPSE']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", "GLIMPSE_PHASE_CHROM{CHROM}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GLIMPSE_PHASE_CHROM{CHROM}.log")
+    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"GLIMPSE_PHASE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.txt")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GLIMPSE_PHASE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -328,11 +370,11 @@ rule GLIMPSE_PHASE:
 
 rule GLIMPSE_LIGATE:
     input: rules.GLIMPSE_PHASE.output
-    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "LIGATE", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf")
+    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "LIGATE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf")
     params:
         PARAM = config['GLIMPSE']['GLIMPSE_LIGATE_PARAM']
     threads: config['GLIMPSE']['THREADS']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GLIMPSE_LIGATE_CHROM{CHROM}.log")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GLIMPSE_LIGATE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -340,9 +382,9 @@ rule GLIMPSE_LIGATE:
         '''
 
 rule GLIMPSE_CONCAT:
-    input: expand(os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "LIGATE", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf"), CHROM = CHROM)
-    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GLIMPSE_CONCAT.log")
+    input: expand(os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "LIGATE", "{glimpsePHASE_params}", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf"), CHROM = CHROM, glimpsePHASE_params = f"{glimpsePHASE_paramspace.wildcard_pattern}")
+    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", f"{glimpsePHASE_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GLIMPSE_{glimpsePHASE_paramspace.wildcard_pattern}_CONCAT.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -363,24 +405,24 @@ rule GLIMPSE_CONCAT:
 
 #----------------RUN---------------#
 #--------------STITCH--------------#
-
 rule STITCH:
     input:
         BAMlist = config['TARGET_BAM'],
         REF_VCF = rules.REF_BEAGLE_PHASING.output
     output:
-        IMPUTED_VCF = os.path.join(config['OUTPUT_DIR'], "STITCH", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz")
+        IMPUTED_VCF = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz")
     params:
-        TEMPDIR = os.path.join(config['OUTPUT_DIR'], "STITCH", "TEMP", "{CHROM}"),
-        POSFILE = os.path.join(config['OUTPUT_DIR'], "STITCH", "TEMP", "{CHROM}", "{CHROM}" + ".POS"),
+        TEMPDIR = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "TEMP", "{CHROM}"),
+        POSFILE = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "TEMP", "{CHROM}", "{CHROM}" + ".POS"),
         OUTNAME = config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz",
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "STITCH", "CHROM", "{CHROM}"),
-        NHAP = config['STITCH']['NHAP'],
-        NGEN = config['STITCH']['NGEN'],
-        OTHER = config['STITCH']['OTHER']
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "CHROM", "{CHROM}"),
+        PARAM = f"--{stitch_paramspace.wildcard_pattern}".replace("~", " --")
+        # NHAP = config['STITCH']['NHAP'],
+        # NGEN = config['STITCH']['NGEN'],
+        # OTHER = config['STITCH']['OTHER']
     threads: config['STITCH']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", "STITCH_CHROM{CHROM}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "STITCH_CHROM{CHROM}.log")
+    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.txt")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -393,19 +435,19 @@ rule STITCH:
         --outputdir={params.OUTDIR} \
         --output_filename={params.OUTNAME} \
         --tempdir={params.TEMPDIR} \
-        --K={params.NHAP} \
-        --nGen={params.NGEN} \
-        --nCores={threads} \
-        {params.OTHER}
+        {params.PARAM} \
+        --nCores={threads}
 
         tabix -f {output.IMPUTED_VCF}
         '''
 
 
 rule STITCH_CONCAT:
-    input: expand(rules.STITCH.output.IMPUTED_VCF, CHROM = CHROM)
-    output: os.path.join(config['OUTPUT_DIR'], "STITCH", config['PREFIX_NAME'] + "_STITCH.vcf.gz")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "STITCH_CONCAT.log")
+    input: expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
+    # input: expand(rules.STITCH.output.IMPUTED_VCF, CHROM = CHROM)
+    # input: expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_param}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), stitch_param = stitch_paramspace.instance_patterns)
+    output: expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}_CONCAT.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -430,36 +472,34 @@ rule GENEIMP:
     input:
         TARGET = rules.FILTERVCF_TARGET.output,
         REF = rules.REF_BEAGLE_PHASING.output
-    output: os.path.join(config['OUTPUT_DIR'], "GENEIMP", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz")
+    output: os.path.join(config['OUTPUT_DIR'], "GENEIMP", f"{geneimp_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz")
     params:
         OUTDIR = os.path.join(config['OUTPUT_DIR'], "GENEIMP"),
         OUTNAME = os.path.basename(rules.FILTERVCF_TARGET.output[0]).split(".")[0],
-        KL = config['GENEIMP']['KL'],
-        FLANK = config['GENEIMP']['FLANKSIZE'],
-        FL = int(float(config['GENEIMP']['FLANKSIZE'])*100),
-        HAP = config['GENEIMP']['HAP'],
-        FILTER = config['GENEIMP']['FILTER']
+        PARAM = f"--{geneimp_paramspace.wildcard_pattern}".replace("~", " --")
+        # KL = config['GENEIMP']['KL'],
+        # FLANK = config['GENEIMP']['FLANKSIZE'],
+        # FL = int(float(config['GENEIMP']['FLANKSIZE'])*100),
+        # HAP = config['GENEIMP']['HAP'],
+        # FILTER = config['GENEIMP']['FILTER']
     threads: config['GENEIMP']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", "GENEIMP.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GENEIMP.log")
+    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.txt")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
-        rm -rf {params.OUTDIR}/indivs
+        rm -rf {params.OUTDIR}/*
         tempdir=$(mktemp -d -p {params.OUTDIR} --suffix {params.OUTNAME})
 
         Rscript scripts/GeneImp.R \
         --target {input.TARGET} \
         --ref {input.REF} \
-        --klthresh {params.KL} \
-        --flanksize {params.FLANK} \
-        --numfilterhaps {params.HAP} \
-        --filtermethod '{params.FILTER}' \
+        {params.PARAM} \
         --maxjobs {threads} \
         --writedir {params.OUTDIR} \
         --tempdir ${{tempdir}} 
 
-        mv {params.OUTDIR}/all.imputed.{params.OUTNAME}.kl{params.KL}.flank{params.FL}.haps{params.HAP}.{params.FILTER}.vcf.gz {output}
+        mv {params.OUTDIR}/all.imputed.*.vcf.gz {output}
         tabix -f {output}
         '''
 
@@ -472,17 +512,18 @@ rule QUILT:
         BAMlist = config['TARGET_BAM'],
         REF_VCF = rules.REF_BEAGLE_PHASING.output
     output:
-        IMPUTED_VCF = os.path.join(config['OUTPUT_DIR'], "QUILT", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT.vcf.gz")
+        IMPUTED_VCF = os.path.join(config['OUTPUT_DIR'], "QUILT", f"{quilt_paramspace.wildcard_pattern}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT.vcf.gz")
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "QUILT", "CHROM", "{CHROM}"),
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "QUILT", f"{quilt_paramspace.wildcard_pattern}", "CHROM", "{CHROM}"),
         OUTNAME=config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT",
+        PARAM = f"--{quilt_paramspace.wildcard_pattern}".replace("~", " --"),
         WINDOW_SIZE = config['QUILT']['WINDOW_SIZE'],
-        BUFFER_SIZE = config['QUILT']['BUFFER_SIZE'],
-        NGEN = config['QUILT']['NGEN'],
-        OTHER = config['QUILT']['OTHER']
+        # BUFFER_SIZE = config['QUILT']['BUFFER_SIZE'],
+        # NGEN = config['QUILT']['NGEN'],
+        # OTHER = config['QUILT']['OTHER']
     threads: config['QUILT']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", "QUILT_CHROM{CHROM}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "QUILT_CHROM{CHROM}.log")
+    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"QUILT_{quilt_paramspace.wildcard_pattern}" +"_CHROM{CHROM}.txt")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"QUILT_{quilt_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -492,7 +533,7 @@ rule QUILT:
         SIZE={params.WINDOW_SIZE}
         result=$(echo "scale=2; ${{CHR_LEN}} / ${{SIZE}}" | bc)
         CHUNKS=$(printf "%.0f" "${{result}}")
-        echo "Imputing Chunks based on WINDOW_SIZE=$SIZE"
+        echo "Imputing Chunks based on WINDOW_SIZE={params.WINDOW_SIZE}"
         CHUNK_VCFS=""
         for c in $(seq 1 ${{CHUNKS}})
         do
@@ -511,12 +552,10 @@ rule QUILT:
             --chr={wildcards.CHROM} \
             --regionStart=${{start}} \
             --regionEnd=${{end}} \
-            --buffer={params.BUFFER_SIZE} \
-            --nGen={params.NGEN} \
             --bamlist={input.BAMlist} \
             --reference_vcf_file={input.REF_VCF} \
             --nCores={threads} \
-            {params.OTHER} || \
+            {params.PARAM} || \
             echo -e "\e[31mSeems like Quilt2.R has failed either because of small reference panel or memory issues.\nIncreasing memory resource and decreasing threads might fix the memeory issues.\e[0m"
 
 
@@ -527,9 +566,9 @@ rule QUILT:
         '''
 
 rule QUILT_CONCAT:
-    input: expand(rules.QUILT.output.IMPUTED_VCF, CHROM = CHROM)
-    output: os.path.join(config['OUTPUT_DIR'], "QUILT", config['PREFIX_NAME'] + "_QUILT.vcf.gz")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "QUILT_CONCAT.log")
+    input: expand(os.path.join(config['OUTPUT_DIR'], "QUILT", "{quilt_params}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT.vcf.gz"), CHROM = CHROM, quilt_params = f"{quilt_paramspace.wildcard_pattern}".replace(" ", ""))
+    output: os.path.join(config['OUTPUT_DIR'], "QUILT", f"{quilt_paramspace.wildcard_pattern}".replace(" ", ""), config['PREFIX_NAME'] + "_QUILT.vcf.gz")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"QUILT_{quilt_paramspace.wildcard_pattern}_CONCAT.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -552,7 +591,8 @@ rule QUILT_CONCAT:
 
 rule NGSRELATE_IMPUTED:
     input:
-        os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
+        # os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
+        rules.IMPUTATION.output
     output:
         RESULTS = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_" + str.capitalize("{tool}") + ".ngsrelate")
     params:

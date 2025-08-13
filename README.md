@@ -57,5 +57,8 @@ In addition, population genetic analyses will also be performed on the ground tr
 - Snakemake >=8.20.0
 - Singularity >= 3.0.0
 
-## Run the pipeline with test dataset
+## Run the pipeline
+1. Prepare [input data](#input-data)
+
+
 Some scripts to test the pipeline are written in this [bash file](./run_test.sh)
