@@ -70,11 +70,11 @@ else:
 rule IMPUTATION:
     input:
         # expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION)
-        expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns),
-        expand(os.path.join(config['OUTPUT_DIR'], "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns),
-        expand(os.path.join(config['OUTPUT_DIR'], "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns),
-        expand(os.path.join(config['OUTPUT_DIR'], "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_QUILT.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns),
-        expand(os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns)
+        expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_QUILT.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns) if "QUILT" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns) if "GLIMPSE" in IMPUTATION else []
 
 #-------------PREPARE--------------#
 #-------------TARGET---------------#
@@ -592,21 +592,32 @@ rule QUILT_CONCAT:
 rule NGSRELATE_IMPUTED:
     input:
         # os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
-        rules.IMPUTATION.output
+        rules.IMPUTATION.input
     output:
-        RESULTS = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_" + str.capitalize("{tool}") + ".ngsrelate")
+        RESULTS = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + ".ngsrelate")
     params:
         OUTDIR = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED")
     threads: workflow.cores * 0.5
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "NGSRELATE_IMPUTED_{tool}.log")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", "NGSRELATE_IMPUTED.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
+        rm {output}
+        for i in {input}; do
+            tool=$(basename $(dirname $(dirname $i)))
+            param=$(basename $(dirname $i))
+            id_list=$(mktemp -p {params.OUTDIR} --suffix=".${{tool}}.${{param}}")
+            bcftools query -l $i > $id_list
+            ngsRelate -h $i -T GT -z $id_list -O {params.OUTDIR}_${{tool}}_${{param}}.ngsrelate -p {threads}
 
-        id_list=$(mktemp -p {params.OUTDIR})
-        bcftools query -l {input} > $id_list
-        ngsRelate -h {input} -T GT -z $id_list -O {output.RESULTS} -p {threads}
-        rm $id_list
+            tmp_out=$(mktemp -p {params.OUTDIR})
+            touch {output}
+            tail -n+2 {output} > $tmp_out
+            head -n1 {params.OUTDIR}_${{tool}}_${{param}}.ngsrelate > {output}
+            cat $tmp_out >> {output}
+            awk -F'\t' -v tool="$tool" -v param="$param" 'BEGIN {{OFS="\t"}} NR==1 {{print $0, "tool", "param"; next}} {{print $0, tool, param}}' {params.OUTDIR}_${{tool}}_${{param}}.ngsrelate | tail -n+2 >> {output.RESULTS}
+            rm $id_list
+            rm $tmp_out
         '''
 
 rule KGD_IMPUTED:
@@ -624,36 +635,53 @@ rule KGD_IMPUTED:
 
 rule GT4HAPPY:
     input:
-        TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        # TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        TEST = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         REF = config['REFERENCE_SEQ']
-    output: os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz")
+    output: 
+        # os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz")
+        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_QUILT.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns) if "QUILT" in IMPUTATION else [],
+        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns) if "GLIMPSE" in IMPUTATION else []
     params:
-        TRUTH_FREQ = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", "truth"),
-        SAMPLE = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + ".sample"),
-        VCF_TMP = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_TMP.vcf.gz"),
-        OUTNAME_HP = config['PREFIX_NAME'] + "_{tool}_accuracy"
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "ACCURACY"),
+        PREFIX_NAME=config['PREFIX_NAME']
+    #     TRUTH_FREQ = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", "truth"),
+    #     SAMPLE = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + ".sample"),
+    #     VCF_TMP = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_TMP.vcf.gz"),
+    #     OUTNAME_HP = config['PREFIX_NAME'] + "_{tool}_accuracy"
     threads: 1
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "COMPARE_{tool}.log")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GT4HAPPY.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
         # tabix -f {input.TEST}
-        bcftools query -l {input.TRUTH} > {params.SAMPLE}
-        bcftools annotate -x ^FORMAT/GT {input.TEST} | bcftools view -S {params.SAMPLE} -Oz -o {params.VCF_TMP}
-        tabix -f {params.VCF_TMP}
-        bcftools view -R {input.TRUTH} -Oz -o {output} {params.VCF_TMP}
-        tabix -f {output}
-        rm {params.VCF_TMP}*
-        vcftools --gzvcf {input.TRUTH} --freq2 --out {params.TRUTH_FREQ}
+        for i in {input.TEST}; do
+            tool=$(basename $(dirname $(dirname $i)))
+            param=$(basename $(dirname $i))
+            workdir={params.OUTDIR}/${{tool}}/${{param}}
+            mkdir -p ${{workdir}}
+            cd ${{workdir}}
+            bcftools query -l $i > sample.list
+            bcftools annotate -x ^FORMAT/GT $i | bcftools view -S sample.list -Oz -o tmp.vcf.gz
+            tabix -f tmp.vcf.gz
+            outfile={params.PREFIX_NAME}_${{tool}}.vcf.gz
+            bcftools view -R {input.TRUTH} -Oz -o $outfile tmp.vcf.gz
+            tabix -f $outfile
+            rm tmp.vcf.gz
+            # vcftools --gzvcf {input.TRUTH} --freq2 --out params.TRUTH_FREQ
         '''
 
 rule VARIANT_ACCURACY:
     input:
-        TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        # TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        TEST = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH
     output:
-        multiext(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME']), "_{tool}_accuracy_metrics_per_variant.tsv", "_{tool}_accuracy_metrics_per_sample.tsv")
+        multiext(os.path.join(config['OUTPUT_DIR'], "ACCURACY", config['PREFIX_NAME']), "_accuracy_metrics_per_variant.tsv", "_accuracy_metrics_per_sample.tsv")
     threads: workflow.cores * 0.5
     script:
         "scripts/accuracy_metrics.R"
@@ -664,17 +692,32 @@ rule HAPLOTYPE_ACCURACY:
         TEST = rules.GT4HAPPY.output,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         REF = config['REFERENCE_SEQ']
-    output: os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv")
+    output: os.path.join((config['OUTPUT_DIR']), "ACCURACY", config['PREFIX_NAME'] + "_accuracy_happy.csv")
     params:
-        OUTNAME = config['PREFIX_NAME'] + "_{tool}_accuracy"
+        OUTNAME = config['PREFIX_NAME'] + "_accuracy"
     threads: workflow.cores * 0.5
     container: "docker://pkrusche/hap.py"
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "HAPLOTYPE_ACCURACY_{tool}.log")
+    log: os.path.join(config['OUTPUT_DIR'], "LOG", "HAPLOTYPE_ACCURACY.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
-        cd $(dirname {output})
-        /opt/hap.py/bin/hap.py {input.TRUTH} {input.TEST} --threads {threads} -o {params.OUTNAME} -r {input.REF}
+        rm {output}
+        for i in {input.TEST}; do
+            tool=$(basename $(dirname $(dirname $i)))
+            param=$(basename $(dirname $i))
+            cd $(dirname {output})
+            workdir=${{tool}}/${{param}}
+            mkdir -p $workdir
+            cd $workdir
+            /opt/hap.py/bin/hap.py {input.TRUTH} $i --threads {threads} -o {params.OUTNAME} -r {input.REF}
+            
+            tmp_out=$(mktemp -p .)
+            touch {output}
+            tail -n+2 {output} > $tmp_out
+            head -n1 {params.OUTNAME}_accuracy.extended.csv > {output}
+            cat $tmp_out >> {output}
+            awk -F'\t' -v tool="$tool" -v param="$param" 'BEGIN {{OFS="\t"}} NR==1 {{print $0, "tool", "param"; next}} {{print $0, tool, param}}' {params.OUTNAME}_accuracy.extended.csv | tail -n+2  >> {output}
+            rm $tmp_out
         '''
 
 
@@ -688,7 +731,8 @@ POPS = " ".join(POPS)
 
 rule FST:
     input: 
-        IMPUTE = expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION),
+        # IMPUTE = expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION),
+        IMPUTE = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
     output: os.path.join(config['OUTPUT_DIR'], "POPGEN", "FST", config['PREFIX_NAME'] + "_FST.txt")
@@ -706,7 +750,7 @@ rule FST:
             fst_param="${{fst_param}}--weir-fst-pop ${{SUBFILE}} "
         done
 
-        echo -e "tImputation\tPairwise\tFst" > fst.tsv
+        
         cd {params.OUTDIR}
         for s1 in {POPS}; do
             for s2 in {POPS}; do
@@ -721,13 +765,14 @@ rule FST:
                     echo -e "TRUTH\t${{s1}}-${{s2}}\t${{fst}}" >> {output}
                     
                     for i in {input.IMPUTE}; do
-                        tool=$(basename $(dirname $i))
+                        tool=$(basename $(dirname $(dirname $i)))
+                        param=$(basename $(dirname $i))
                         vcftools --gzvcf $i \
                         --weir-fst-pop subpop${{s1}}.txt \
                         --weir-fst-pop subpop${{s2}}.txt \
-                        --out ${{tool}}_subpop_${{s1}}_${{s2}} > ${{tool}}_subpop_${{s1}}_${{s2}}.log 2>&1
-                        fst=$(grep "mean" ${{tool}}_subpop_${{s1}}_${{s2}}.log | cut -d" " -f7)
-                        echo -e "${{tool}}\t${{s1}}-${{s2}}\t${{fst}}" >> {output}
+                        --out ${{tool}}_${{param}}_subpop_${{s1}}_${{s2}} > ${{tool}}_${{param}}_subpop_${{s1}}_${{s2}}.log 2>&1
+                        fst=$(grep "mean" ${{tool}}_${{param}}_subpop_${{s1}}_${{s2}}.log | cut -d" " -f7)
+                        echo -e "${{tool}}_${{param}}\t${{s1}}-${{s2}}\t${{fst}}" >> {output}
                     done
                 fi
             done
@@ -738,16 +783,17 @@ rule FST:
 
 rule STAIRWAY_IMPUTED:
     input: 
-        VCF = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        # VCF = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        VCF = rules.IMPUTATION.input,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
     output:
-        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}", "stairway_results.txt")
+        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY_PLOT", "stairwayplot_results.txt")
     params:
         BLUEPRINT = "scripts/template.blueprint",
         SEQ_LEN = str(config['STAIRWAY_PLOT']['SEQUENCE_LENGTH']),
         MU = config['STAIRWAY_PLOT']['MUT_RATE'],
-        PLOT_TITLE = "{tool}-" + config['PREFIX_NAME'],
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "{tool}"),
+        PLOT_TITLE = config['PREFIX_NAME'],
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY_PLOT"),
         PREFIX_NAME = config['PREFIX_NAME']
     script: "scripts/run_SFS_Stairway.R"
 
@@ -757,21 +803,21 @@ rule STAIRWAY_TRUTH:
         VCF = rules.FILTERVCF_REF.output.TRUTH,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
     output:
-        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH", "stairway_results.txt")
+        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY_PLOT", "TRUTH", "stairway_results.txt")
     params:
         BLUEPRINT = "scripts/template.blueprint",
         SEQ_LEN = config['STAIRWAY_PLOT']['SEQUENCE_LENGTH'],
         MU = config['STAIRWAY_PLOT']['MUT_RATE'],
         PLOT_TITLE = "Groundtruth-"+ config['PREFIX_NAME'],
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH"),
+        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY_PLOT", "TRUTH"),
         PREFIX_NAME = config['PREFIX_NAME']
     script: "scripts/run_SFS_Stairway.R"
 
 
 rule POPGEN:
     input: 
-        expand(rules.STAIRWAY_IMPUTED.output, tool = IMPUTATION),
-        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY", "TRUTH", "stairway_results.txt"),
+        rules.STAIRWAY_IMPUTED.output,
+        rules.STAIRWAY_TRUTH.output,
         rules.FST.output if NPOP > 1 else ()
 
 
@@ -819,3 +865,6 @@ rule ACCURACY:
     script:
         "scripts/plot_imputation_accuracy.R"
 
+
+## TODO:
+## - correct scripts for VARIANT_ACCURACY, HAPLOTYPE_ACCURACY, STAIRWAY_IMPUTED, output all the results for different tools in the same file
