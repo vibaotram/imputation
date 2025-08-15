@@ -3,21 +3,17 @@ library(parallel)
 library(data.table)
 
 truth <- snakemake@input[["TRUTH"]]
-imputed <- snakemake@input[["TEST"]]
+imputed_list <- snakemake@input[["TEST"]]
 ncores <- snakemake@threads
 
 truth_data <- read.vcfR(truth)
-imputed_data <- read.vcfR(imputed)
 
 truth_info <- getFIX(truth_data)
 truth_snp <- paste(truth_info[,1], truth_info[,2], sep = "_")
 truth_gt <- extract.gt(truth_data)
 rownames(truth_gt) <- truth_snp
 
-imputed_info <- getFIX(imputed_data)
-imputed_snp <- paste(imputed_info[,1], imputed_info[,2], sep = "_")
-imputed_gt <- extract.gt(imputed_data)
-rownames(imputed_gt) <- imputed_snp
+
 
 
 
@@ -181,10 +177,27 @@ accuracy_metrics <- function(actual, predicted, ncores) {
   return(list("variant" = var, "sample" = sam))
 }
 
-metrics <- accuracy_metrics(truth_gt, imputed_gt, ncores)
+unlink(snakemake@output[[1]])
 
-fwrite(metrics$variant, snakemake@output[[1]], sep = "\t")
-fwrite(metrics$sample, snakemake@output[[2]], sep = "\t")
+for (imputed in imputed_list) {
+  imputed_data <- read.vcfR(imputed)
+  imputed_info <- getFIX(imputed_data)
+  imputed_snp <- paste(imputed_info[,1], imputed_info[,2], sep = "_")
+  imputed_gt <- extract.gt(imputed_data)
+  rownames(imputed_gt) <- imputed_snp
+
+  metrics <- accuracy_metrics(truth_gt, imputed_gt, ncores)
+
+  tool <- basename(dirname(dirname(imputed)))
+  param <- basename(dirname(imputed))
+  metrics$variant$IMPUTATION <- tool
+  metrics$variant$PARAM <- param
+  metrics$sample$IMPUTATION <- tool
+  metrics$sample$PARAM <- param
+  fwrite(metrics$variant, snakemake@output[[1]], sep = "\t", append = T)
+  fwrite(metrics$sample, snakemake@output[[2]], sep = "\t", append = T)
+}
+
 
 # imputed <- "~/imputation/test/OUTPUT/ACCURACY/BEAGLE/p4_GT.vcf.gz"
 # imputed <- "~/imputation/test/OUTPUT/ACCURACY/STITCH/p4_GT.vcf.gz"

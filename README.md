@@ -18,8 +18,8 @@ The pipeline consists of 3 main parts: imputation by multiple choices of tool, p
 - REFERENCE_VCFGZ:  reference panel in vcf.gz format, index file is required 
 - GROUNDTRUTH:      ground truth genotypes in vcf.gz format, if available
 
-
-## Imputation
+## Output
+### Imputation
 
 Five imputation tools are available and all can be executed in the same pipeline:
 - BEAGLE 5.4
@@ -30,14 +30,18 @@ Five imputation tools are available and all can be executed in the same pipeline
 
 Prior to imputation, reference VCF file will be filtered out for fixed alleles. If BEAGLE or GeneImp is executed, SNP calling and filtering will be performed by bcftools mpileup and bcftools filter, then the output VCF file will be used for imputation.
 
-## Population genetic analysis
+**Imputed VCF files are created in <OUTPUT_DIR>/<TOOL>/<PARAMETER>/<PREFIX>_<TOOL>.vcf.gz.**
+
+### Population genetic analysis
 
 Analyses will be performed on the imputed genotypes:
 - pairwise relatedness and inbreeding coefficients, by [ANGSD](https://www.popgen.dk/angsd/index.php/ANGSD)/[NgsRelate](https://github.com/ANGSD/NgsRelate) and [KGD](https://github.com/AgResearch/KGD)
 - Demographic inference by vcf2sfs and stairway plot v2
 - Fst between populations, if more than 1 population are specified
 
-## Evaluation of imputation performance
+**Results are stored in <OUTPUT_DIR>/POPGEN/<ANALYSIS> folders.**
+
+### Evaluation of imputation performance
 
 If a ground truth is present, imputation accuracy will be measured by comparing the imputed genotypes and the truth genotypes. Different metrics, true positives (TP), false positive (FP), false negative (FN), recall, precisiom, F1 score, concordance (Po), chance agreement (Pc), imputation quality score (IQS) will be calculated the basis of variant and sample. 
 
@@ -53,6 +57,9 @@ Imputed genotypes are also compared with the ground truth by [hap.py](https://gi
 
 In addition, population genetic analyses will also be performed on the ground truth for assessing the effects of imputation on downstream analysis.
 
+**Output data include:**
+
+
 ## Software requirement
 - Snakemake >=8.20.0
 - Singularity >= 3.0.0
@@ -60,5 +67,9 @@ In addition, population genetic analyses will also be performed on the ground tr
 ## Run the pipeline
 1. Prepare [input data](#input-data)
 
+2. 
+
 
 Some scripts to test the pipeline are written in this [bash file](./run_test.sh)
+
+## Note
