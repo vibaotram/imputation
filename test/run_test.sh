@@ -8,4 +8,4 @@ snakemake ACCURACY --sdm apptainer --configfile config/config.yaml
 snakemake ACCURACY --sdm apptainer --configfile config/config.yaml --report test/OUTPUT/report.html
 
 ## create dag, rulegraph, filegraph, or summary
-snakemake ACCURACY --configfile configconfig.yaml --dag [rulegraph,filegraph,summary] | dot -Tpdf > test/dag.pdf 
+snakemake ACCURACY --configfile configconfig.yaml --[dag,rulegraph,filegraph,summary] | dot -Tpdf > test/dag.pdf 
