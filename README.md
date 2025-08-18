@@ -67,17 +67,24 @@ Output data is in folder `<OUTPUT_DIR>/ACCURACY`, including:
 - Singularity >= 3.0.0
 
 ## Run the pipeline
-1. Prepare [input data](#input-data)
+1. Download the pipeline:
+```
+git clone https://github.com/vibaotram/imputation.git
+```
 
-2. Configure the pipeline
+2. Prepare [input data](#input-data)
+
+3. Configure the pipeline
 - Prepare a config file with this [template](config/config.yaml). 
 - For each imputation tool - BEAGLE, STITCH, GLIMPSE2 (GLIMPSE2_phase), QUILT2, and GENEIMP, parameters can be provided in a csv file with different parameters in columns. Column names must match exactly parameter name, without the leading "--/-". Different sets of values for the parameters can be provided in different rows. If the csv file is not provided in the config file, default parameters will be used. Details of parameters for all the imputation tools can be found [here](config/params)
 - Number of CPUs (THREADS) for each tool in the config file must be specified.
 
-3. Run Snakemake:
+4. Run Snakemake:
 The pipeline can run upon 3 main steps (IMPUTATION, POPGEN, and ACCURACY evaluation) and it needs to be specified in the Snakemake command as below.
 
 ```
+cd imputation
+
 ## run imputation only (no downstream analysis)
 snakemake IMPUTATION --sdm apptainer --configfile config/config.yaml --cores 12
 
