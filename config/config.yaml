@@ -1,5 +1,4 @@
 # Input data 
-
 ## list of bam files for target samples
 TARGET_BAM: "test/INPUT/BAM/bamlist" # BAM.BAI IS REQUIRED BY GLIMPSE
 ## reference genome
@@ -10,19 +9,21 @@ REFERENCE_VCFGZ: "test/INPUT/REF/ref_test.vcf.gz"
 GROUNDTRUTH: "test/INPUT/REF/test_truth.vcf.gz"
 
 
-# Software parameters
+# Output directory and prefix for output files
 OUTPUT_DIR: "test/OUTPUT"
 PREFIX_NAME: "test_impute"
 
-IMPUTATION: # True/False
+# Choose imputation tools to run
+IMPUTATION: # True/False to perform or not
     BEAGLE: True
     GLIMPSE: True
     STITCH: True
     GENEIMP: False
     QUILT: True
 
+# Software parameters
 NGSRELATE:
-    MIN_MAF: 0.01
+    MIN_MAF: 0.01 # minimum MAF used for NgsRelate relatedness and inbreeding estimation
     THREADS: 6
 
 KGD:
@@ -32,50 +33,42 @@ BAM2VCF: # BY BCFTOOLS MPILEUP
     THREADS: 6
 
 FILTERVCF_TARGET: # BY BCFTOOLS FILTER
-    MIN_QUAL: 30
+    MIN_QUAL: 30 # minimum QUAL filter for target VCF
     THREADS: 6
 
 REF_BEAGLE_PHASING:
-    PARAM: "em=true"
+    PARAM: "em=true" # parameters specified here, or "" for default settings
     THREADS: 6
 
 BEAGLE:
-    PARAM: "em=true"
+    PARAM: "config/beagle_param.csv" # a csv file containing parameters in columns and values in rows, or "" for default settings
     THREADS: 6
 
 
 GLIMPSE:
-    GLIMPSE:
-    GLIMPSE_CHUNK_PARAM: ""
-    GLIMPSE_SPLIT_REFERENCE_PARAM: ""
-    GLIMPSE_PHASE_PARAM: ""
-    GLIMPSE_LIGATE_PARAM: ""
+    GLIMPSE_CHUNK_PARAM: "" # parameters specified here, or "" for default settings
+    GLIMPSE_SPLIT_REFERENCE_PARAM: "" # parameters specified here, or "" for default settings
+    GLIMPSE_PHASE_PARAM: "config/glimpsePHASE_param.csv" # a csv file containing parameters in columns and values in rows, or "" for default settings
+    GLIMPSE_LIGATE_PARAM: "" # parameters specified here, or "" for default settings
     THREADS: 6
 
 
 STITCH:
-    NHAP: 5 # REQUIRED
-    NGEN: 50 # REQUIRED
-    OTHER: "--expRate=1"
+    PARAM: "config/stitch_param.csv" # a csv file containing parameters in columns and values in rows, or "" for default settings
     THREADS: 6
 
 GENEIMP:
-    HAP: 10
-    KL: 50
-    FLANKSIZE: 0.5
-    FILTER: "pairrand"
+    PARAM: "config/geneimp_param.csv" # a csv file containing parameters in columns and values in rows, or "" for default settings
     THREADS: 6
 
 QUILT:
-    WINDOW_SIZE: 5000000
-    BUFFER_SIZE: 100000
-    NGEN: 50
-    OTHER: "--expRate=1"
+    WINDOW_SIZE: 1000000
+    PARAM: "config/quilt_param.csv" # a csv file containing parameters in columns and values in rows, or "" for default settings
     THREADS: 6
-    MEM_MB: 8G
+    # MEM_MB: 8G
 
 STAIRWAY_PLOT:
-    POPFILE: "test/INPUT/pops_file.txt"
-    SEQUENCE_LENGTH: 10000000
-    MUT_RATE: 1e-7
+    POPFILE: "test/INPUT/pops_file.txt" # a file containing in each row one individual name and its population name (no header/column name)
+    SEQUENCE_LENGTH: 10000000 # length of the reference sequence
+    MUT_RATE: 1e-7 # mutation rate
     THREADS: 6
