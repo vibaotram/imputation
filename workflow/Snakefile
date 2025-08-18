@@ -90,7 +90,6 @@ rule NGSRELATE_BAM:
         NIND = len(BAMfiles),
         MIN_MAF = config['NGSRELATE']['MIN_MAF']
     threads: config['NGSRELATE']['THREADS']
-    # conda: "envs/angsd.yaml"
     log: os.path.join(OUTDIR, "LOG", "NGSRELATE.log")
     shell:
         '''
@@ -217,7 +216,6 @@ rule NGSRELATE_TRUTH:
         NIND = len(BAMfiles),
         MIN_MAF = config['NGSRELATE']['MIN_MAF']
     threads: config['NGSRELATE']['THREADS']
-    # conda: "envs/angsd.yaml"
     log: os.path.join(OUTDIR, "LOG", "NGSRELATE.log")
     shell:
         '''

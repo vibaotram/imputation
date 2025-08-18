@@ -1,6 +1,5 @@
 .*
 test/OUTPUT/*
-workflow/envs/*
 workflow/scripts/imputation_accuracy_calculator
 workflow/scripts/stairway*
 workflow/scripts/KGD/Example

@@ -156,15 +156,11 @@ dev.off()
 
 
 # Benchmark
-
 benchmark_files <- list.files(snakemake@params[["BENCHMARK"]], full.names = T)
-# benchmark_files <- list.files("/home/tvi069/imputation/test/OUTPUT/BENCHMARK",
-#                               full.names = T)
 
 benchmark <- do.call(rbind, lapply(benchmark_files, function(f) {
   b <- data.frame(Imputation = gsub(".txt", "", basename(f)),
                   read.delim(f))
-  # b$Imputation <- gsub(".txt", "", basename(f))
   b
 }))
 

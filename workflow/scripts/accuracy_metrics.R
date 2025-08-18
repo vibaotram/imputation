@@ -13,10 +13,6 @@ truth_snp <- paste(truth_info[,1], truth_info[,2], sep = "_")
 truth_gt <- extract.gt(truth_data)
 rownames(truth_gt) <- truth_snp
 
-
-
-
-
 gt_to_num <- function(x) {
   x[x %in% c("0/0", "0|0")] <- 0
   x[x %in% c("0/1", "0|1", "1/0", "1|0")] <- 1
@@ -26,12 +22,7 @@ gt_to_num <- function(x) {
 }
 
 
-
-
-accuracy_metrics <- function(actual, predicted, ncores) {
-  # actual <- truth_gt
-  # predicted <- imputed_gt
-  
+accuracy_metrics <- function(actual, predicted, ncores) {  
   cat("Converting gt (0/0, 0/1, 1/1, ./.) into number (0,1,2, NA)\n")
   # convert gt (0/0, 0/1, 1/1, ./.) into number (0,1,2, NA)
   actual_num <- gt_to_num(actual)
@@ -195,28 +186,3 @@ for (imputed in imputed_list) {
   fwrite(metrics$variant, snakemake@output[[1]], sep = "\t", append = T)
   fwrite(metrics$sample, snakemake@output[[2]], sep = "\t", append = T)
 }
-
-
-# imputed <- "~/imputation/test/OUTPUT/ACCURACY/BEAGLE/p4_GT.vcf.gz"
-# imputed <- "~/imputation/test/OUTPUT/ACCURACY/STITCH/p4_GT.vcf.gz"
-# truth <- "~/imputation/test/OUTPUT/VCF/p4_GROUNDTRUTH.vcf.gz"
-# t <- read.table("~/imputation/test/OUTPUT/ACCURACY/BEAGLE/p4_BEAGLE_per_variant_results.txt", header = T)
-# t <- read.table("~/imputation/test/OUTPUT/ACCURACY/STITCH/p4_STITCH_per_variant_results.txt", header = T)
-# t$position <- as.numeric(gsub(".+:", "", t$position))
-
-# metrics$variant$position <- rownames(metrics$variant)
-# metrics$variant$position <- gsub(".+\\_", "", metrics$variant$position)
-
-# d <- merge(t, metrics$variant, by = "position")
-
-# ggplot(d, aes(x = IQS.x, y = IQS.y)) + geom_point() + theme_minimal() +
-#   xlab("IQS by github tool") +
-#   ylab("IQS by custom script")
-
-# metrics_variant %>% 
-#   filter(!is.nan(Imputed_ALT_Freq)) %>% 
-#   pivot_longer(cols = Recall:F1, names_to = "Metrics", values_to = "Value") %>%
-#   ggplot() +
-#   # facet_grid(rows = vars(Metrics)) + 
-#   geom_boxplot(aes(x = Metrics, y = Value), outliers = F,
-#                position = position_dodge2(width = 0.5, padding = 0))
