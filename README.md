@@ -56,10 +56,10 @@ If a ground truth is present, imputation accuracy will be measured by comparing 
 Imputed genotypes are also compared with the ground truth by [hap.py](https://github.com/Illumina/hap.py) for haplotype comparisons. In addition, population genetic analyses will also be performed on the ground truth for assessing the effects of imputation on downstream analysis.
 
 Output data is in folder `<OUTPUT_DIR>/ACCURACY`, including:
-- <OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_metrics_per_sample.tsv: accuracy metrics per sample for all the imputed data
-- <OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_metrics_per_variant.tsv: accuracy metrics per variant for all the imputed data
-- <OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_happy.tsv: hap.py results for all the imputed data
-- <OUTPUT_DIR>/ACCURACY/PLOT: plots of all the accuracy metrics, as well as comparison plots of genetic relatedness, inbreeding, and MAF between the imputed data and groundtruth.
+- `<OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_metrics_per_sample.tsv`: accuracy metrics per sample for all the imputed data
+- `<OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_metrics_per_variant.tsv`: accuracy metrics per variant for all the imputed data
+- `<OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_happy.tsv`: hap.py results for all the imputed data
+- `<OUTPUT_DIR>/ACCURACY/PLOT`: plots of all the accuracy metrics, as well as comparison plots of genetic relatedness, inbreeding, and MAF between the imputed data and groundtruth.
 
 
 ## Software requirement
