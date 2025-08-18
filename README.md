@@ -87,7 +87,7 @@ snakemake POPGEN --sdm apptainer --configfile config/config.yaml --cores 12
 ## run imputation, downstream analysis, and accuracy evaluation if a groundtruth is provided
 snakemake ACCURACY --sdm apptainer --configfile config/config.yaml --cores 12
 ```
-A test data set of 10 LCS samples, with 10 samples in the reference panel, and a groundtruth set of SNPs, is provided in the `test` folder. Scripts to run the test can be found in this [bash file](./test/run_test.sh).
+A test data set of 10 LCS samples, with 10 samples in the reference panel, and a groundtruth set of SNPs, is provided in the `test` folder. Scripts to run the test can be found in this [bash file](./test/run_test.sh). Because of the small test data, some imputation tools such as GeneImp or QUILT2 may fail with default parameter settings.
 
 ## Note
 Snakemake sometimes does not automatically detect the total number of cores for the pipeline, and users need to specified "--cores <N>".
