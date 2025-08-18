@@ -190,10 +190,8 @@ for (imputed in imputed_list) {
 
   tool <- basename(dirname(dirname(imputed)))
   param <- basename(dirname(imputed))
-  metrics$variant$IMPUTATION <- tool
-  metrics$variant$PARAM <- param
-  metrics$sample$IMPUTATION <- tool
-  metrics$sample$PARAM <- param
+  metrics$variant$data <- paste(tool, param, sep = "_")
+  metrics$sample$data <- paste(tool, param, sep = "_")
   fwrite(metrics$variant, snakemake@output[[1]], sep = "\t", append = T)
   fwrite(metrics$sample, snakemake@output[[2]], sep = "\t", append = T)
 }

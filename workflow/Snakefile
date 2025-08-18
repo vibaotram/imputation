@@ -66,15 +66,16 @@ if glimpsePHASE_add:
 else:
     glimpsePHASE_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
 
+OUTDIR = os.path.abspath(config['OUTPUT_DIR'])
 
 rule IMPUTATION:
     input:
-        # expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION)
-        expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_QUILT.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns) if "QUILT" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns) if "GLIMPSE" in IMPUTATION else []
+        # expand(os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION)
+        expand(os.path.join(OUTDIR, "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_QUILT.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns) if "QUILT" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns) if "GLIMPSE" in IMPUTATION else []
 
 #-------------PREPARE--------------#
 #-------------TARGET---------------#
@@ -82,15 +83,15 @@ rule IMPUTATION:
 rule NGSRELATE_BAM:
     input: config['TARGET_BAM']
     output:
-        RESULTS = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "BAM", config['PREFIX_NAME'] + ".ngsrelate")
+        RESULTS = os.path.join(OUTDIR, "NGSRELATE", "BAM", config['PREFIX_NAME'] + ".ngsrelate")
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "BAM"),
+        OUTDIR = os.path.join(OUTDIR, "NGSRELATE", "BAM"),
         OUTNAME = config['PREFIX_NAME'],
         NIND = len(BAMfiles),
         MIN_MAF = config['NGSRELATE']['MIN_MAF']
     threads: config['NGSRELATE']['THREADS']
     # conda: "envs/angsd.yaml"
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "NGSRELATE.log")
+    log: os.path.join(OUTDIR, "LOG", "NGSRELATE.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -125,9 +126,9 @@ rule BAM2VCF:
     input:
         BAMlist = config['TARGET_BAM'],
         REF_SEQ = config['REFERENCE_SEQ']
-    output: os.path.join(config['OUTPUT_DIR'], "VCF", config['PREFIX_NAME'] + ".vcf.gz")
+    output: os.path.join(OUTDIR, "VCF", config['PREFIX_NAME'] + ".vcf.gz")
     threads: config['BAM2VCF']['THREADS']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "BAM2VCF.log")
+    log: os.path.join(OUTDIR, "LOG", "BAM2VCF.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -145,10 +146,10 @@ rule FILTERVCF_REF:
         REF = config['REFERENCE_VCFGZ'],
         TRUTH = config['GROUNDTRUTH'] if config['GROUNDTRUTH'] else ()
     output:
-        REF = os.path.join(config['OUTPUT_DIR'], "VCF", config['PREFIX_NAME'] + "_REF.vcf.gz"),
-        TRUTH = os.path.join(config['OUTPUT_DIR'], "VCF", config['PREFIX_NAME'] + "_GROUNDTRUTH.vcf.gz") if config['GROUNDTRUTH'] else ()
+        REF = os.path.join(OUTDIR, "VCF", config['PREFIX_NAME'] + "_REF.vcf.gz"),
+        TRUTH = os.path.join(OUTDIR, "VCF", config['PREFIX_NAME'] + "_GROUNDTRUTH.vcf.gz") if config['GROUNDTRUTH'] else ()
     threads: config['FILTERVCF_TARGET']['THREADS']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "FILTERVCF_REF.log")
+    log: os.path.join(OUTDIR, "LOG", "FILTERVCF_REF.log")
     shell:
         '''
         # filter REF for fixed alleles
@@ -168,11 +169,11 @@ rule FILTERVCF_TARGET:
     input:
         TARGET = rules.BAM2VCF.output,
         REF = rules.FILTERVCF_REF.output.REF
-    output: os.path.join(config['OUTPUT_DIR'], "VCF", config['PREFIX_NAME'] + "_filtered.vcf.gz")
+    output: os.path.join(OUTDIR, "VCF", config['PREFIX_NAME'] + "_filtered.vcf.gz")
     params:
         MIN_QUAL = config['FILTERVCF_TARGET']['MIN_QUAL']
     threads: config['FILTERVCF_TARGET']['THREADS']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "FILTERVCF_TARGET.log")
+    log: os.path.join(OUTDIR, "LOG", "FILTERVCF_TARGET.log")
     shell:
         '''
         # filter TARGET
@@ -186,22 +187,22 @@ rule FILTERVCF_TARGET:
 rule KGD_LCS:
     input: rules.FILTERVCF_TARGET.output
     output:
-        RELATEDNESS = os.path.join(config['OUTPUT_DIR'], "KGD", "LCS", config['PREFIX_NAME'] + "_pairwise_relatedness.txt"),
-        INBREEDING = os.path.join(config['OUTPUT_DIR'], "KGD", "LCS", config['PREFIX_NAME'] + "_inbreeding_coefficient.txt")
+        RELATEDNESS = os.path.join(OUTDIR, "KGD", "LCS", config['PREFIX_NAME'] + "_pairwise_relatedness.txt"),
+        INBREEDING = os.path.join(OUTDIR, "KGD", "LCS", config['PREFIX_NAME'] + "_inbreeding_coefficient.txt")
     params:
         KGD_GMATRIX = os.path.abspath("scripts/KGD/GBS-Chip-Gmatrix.R")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "KGD.log")
+    log: os.path.join(OUTDIR, "LOG", "KGD.log")
     script:
         "scripts/KGD.R"
 
 rule KGD_TRUTH:
     input: rules.FILTERVCF_REF.output.TRUTH
     output:
-        RELATEDNESS = os.path.join(config['OUTPUT_DIR'], "KGD", "TRUTH", config['PREFIX_NAME'] + "_pairwise_relatedness.txt"),
-        INBREEDING = os.path.join(config['OUTPUT_DIR'], "KGD", "TRUTH", config['PREFIX_NAME'] + "_inbreeding_coefficient.txt")
+        RELATEDNESS = os.path.join(OUTDIR, "KGD", "TRUTH", config['PREFIX_NAME'] + "_pairwise_relatedness.txt"),
+        INBREEDING = os.path.join(OUTDIR, "KGD", "TRUTH", config['PREFIX_NAME'] + "_inbreeding_coefficient.txt")
     params:
         KGD_GMATRIX = os.path.abspath("scripts/KGD/GBS-Chip-Gmatrix.R")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "KGD.log")
+    log: os.path.join(OUTDIR, "LOG", "KGD.log")
     script:
         "scripts/KGD.R"
 
@@ -209,15 +210,15 @@ rule KGD_TRUTH:
 rule NGSRELATE_TRUTH:
     input: rules.FILTERVCF_REF.output.TRUTH
     output:
-        RESULTS = os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "TRUTH", config['PREFIX_NAME'] + ".ngsrelate")
+        RESULTS = os.path.join(OUTDIR, "NGSRELATE", "TRUTH", config['PREFIX_NAME'] + ".ngsrelate")
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "NGSRELATE"),
+        OUTDIR = os.path.join(OUTDIR, "NGSRELATE"),
         OUTNAME = config['PREFIX_NAME'],
         NIND = len(BAMfiles),
         MIN_MAF = config['NGSRELATE']['MIN_MAF']
     threads: config['NGSRELATE']['THREADS']
     # conda: "envs/angsd.yaml"
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "NGSRELATE.log")
+    log: os.path.join(OUTDIR, "LOG", "NGSRELATE.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -234,13 +235,13 @@ rule NGSRELATE_TRUTH:
 
 rule REF_BEAGLE_PHASING:
     input: rules.FILTERVCF_REF.output.REF # config['REFERENCE_VCFGZ']
-    output: os.path.join(config['OUTPUT_DIR'], "PHASE", config['PREFIX_NAME'] + "_phased.vcf.gz")
+    output: os.path.join(OUTDIR, "PHASE", config['PREFIX_NAME'] + "_phased.vcf.gz")
     threads: config['REF_BEAGLE_PHASING']['THREADS']
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "PHASE"),
+        OUTDIR = os.path.join(OUTDIR, "PHASE"),
         TMP_OUTNAME = config['PREFIX_NAME'] + "_TMP",
         PARAM = config['REF_BEAGLE_PHASING']['PARAM']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "REF_BEAGLE_PHASING.log")
+    log: os.path.join(OUTDIR, "LOG", "REF_BEAGLE_PHASING.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -262,13 +263,13 @@ rule BEAGLE:
     input:
         TARGET = rules.FILTERVCF_TARGET.output,
         REF = rules.REF_BEAGLE_PHASING.output
-    output: os.path.join(config['OUTPUT_DIR'], "BEAGLE", f"{beagle_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz")
+    output: os.path.join(OUTDIR, "BEAGLE", f"{beagle_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz")
     threads: config['BEAGLE']['THREADS']
     params:
-        OUT = os.path.join(config['OUTPUT_DIR'], "BEAGLE", f"{beagle_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_BEAGLE"),
+        OUT = os.path.join(OUTDIR, "BEAGLE", f"{beagle_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_BEAGLE"),
         PARAM = f"{beagle_paramspace.wildcard_pattern}".replace("~", " ") if beagle_add else ""
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"BEAGLE_{beagle_paramspace.wildcard_pattern}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"BEAGLE_{beagle_paramspace.wildcard_pattern}.log")
+    benchmark: os.path.join(OUTDIR, "BENCHMARK", f"BEAGLE_{beagle_paramspace.wildcard_pattern}.txt")
+    log: os.path.join(OUTDIR, "LOG", f"BEAGLE_{beagle_paramspace.wildcard_pattern}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -289,12 +290,12 @@ rule BEAGLE:
 rule GLIMPSE_CHUNK:
     input: rules.REF_BEAGLE_PHASING.output
     output:
-        os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}_CHUNKS.txt")
+        os.path.join(OUTDIR, "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}_CHUNKS.txt")
     params:
         PARAM = config['GLIMPSE']['GLIMPSE_CHUNK_PARAM'],
-        LOG = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}_CHUNKS.log")
+        LOG = os.path.join(OUTDIR, "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}_CHUNKS.log")
     threads: config['GLIMPSE']['THREADS']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GLIMPSE_CHUNK_CHROM{CHROM}.log")
+    log: os.path.join(OUTDIR, "LOG", "GLIMPSE_CHUNK_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -312,12 +313,12 @@ rule GLIMPSE_SPLIT_REFERENCE:
     input:
         CHUNK = rules.GLIMPSE_CHUNK.output,
         REF_VCF = rules.REF_BEAGLE_PHASING.output
-    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME'] + ".BIN.DONE")
+    output: os.path.join(OUTDIR, "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME'] + ".BIN.DONE")
     params:
-        BIN = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME']),
+        BIN = os.path.join(OUTDIR, "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME']),
         PARAM = config['GLIMPSE']['GLIMPSE_SPLIT_REFERENCE_PARAM']
     threads: config['GLIMPSE']['THREADS']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GLIMPSE_SPLIT_REFERENCE_CHROM{CHROM}.log")
+    log: os.path.join(OUTDIR, "LOG", "GLIMPSE_SPLIT_REFERENCE_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -338,14 +339,14 @@ rule GLIMPSE_PHASE:
         BAMlist = config['TARGET_BAM'],
         CHUNK = rules.GLIMPSE_CHUNK.output,
         BIN = rules.GLIMPSE_SPLIT_REFERENCE.output
-    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "IMPUTE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME'] + ".IMPUTEDLIST")
+    output: os.path.join(OUTDIR, "GLIMPSE", "IMPUTE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME'] + ".IMPUTEDLIST")
     params:
-        BIN = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME']),
-        OUTNAME = os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "IMPUTE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME']),
+        BIN = os.path.join(OUTDIR, "GLIMPSE", "CHUNK", "{CHROM}", config['PREFIX_NAME']),
+        OUTNAME = os.path.join(OUTDIR, "GLIMPSE", "IMPUTE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME']),
         PARAM = f"--{glimpsePHASE_paramspace.wildcard_pattern}".replace("~", " ") if glimpsePHASE_add else ""
     threads: config['GLIMPSE']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"GLIMPSE_PHASE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GLIMPSE_PHASE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
+    benchmark: os.path.join(OUTDIR, "BENCHMARK", f"GLIMPSE_PHASE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.txt")
+    log: os.path.join(OUTDIR, "LOG", f"GLIMPSE_PHASE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -370,11 +371,11 @@ rule GLIMPSE_PHASE:
 
 rule GLIMPSE_LIGATE:
     input: rules.GLIMPSE_PHASE.output
-    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "LIGATE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf")
+    output: os.path.join(OUTDIR, "GLIMPSE", "LIGATE", f"{glimpsePHASE_paramspace.wildcard_pattern}", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf")
     params:
         PARAM = config['GLIMPSE']['GLIMPSE_LIGATE_PARAM']
     threads: config['GLIMPSE']['THREADS']
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GLIMPSE_LIGATE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
+    log: os.path.join(OUTDIR, "LOG", f"GLIMPSE_LIGATE_{glimpsePHASE_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -382,9 +383,9 @@ rule GLIMPSE_LIGATE:
         '''
 
 rule GLIMPSE_CONCAT:
-    input: expand(os.path.join(config['OUTPUT_DIR'], "GLIMPSE", "LIGATE", "{glimpsePHASE_params}", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf"), CHROM = CHROM, glimpsePHASE_params = f"{glimpsePHASE_paramspace.wildcard_pattern}")
-    output: os.path.join(config['OUTPUT_DIR'], "GLIMPSE", f"{glimpsePHASE_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GLIMPSE_{glimpsePHASE_paramspace.wildcard_pattern}_CONCAT.log")
+    input: expand(os.path.join(OUTDIR, "GLIMPSE", "LIGATE", "{glimpsePHASE_params}", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_GLIMPSE.bcf"), CHROM = CHROM, glimpsePHASE_params = f"{glimpsePHASE_paramspace.wildcard_pattern}")
+    output: os.path.join(OUTDIR, "GLIMPSE", f"{glimpsePHASE_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_GLIMPSE.vcf.gz")
+    log: os.path.join(OUTDIR, "LOG", f"GLIMPSE_{glimpsePHASE_paramspace.wildcard_pattern}_CONCAT.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -410,19 +411,19 @@ rule STITCH:
         BAMlist = config['TARGET_BAM'],
         REF_VCF = rules.REF_BEAGLE_PHASING.output
     output:
-        IMPUTED_VCF = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz")
+        IMPUTED_VCF = os.path.join(OUTDIR, "STITCH", f"{stitch_paramspace.wildcard_pattern}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz")
     params:
-        TEMPDIR = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "TEMP", "{CHROM}"),
-        POSFILE = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "TEMP", "{CHROM}", "{CHROM}" + ".POS"),
+        TEMPDIR = os.path.join(OUTDIR, "STITCH", f"{stitch_paramspace.wildcard_pattern}", "TEMP", "{CHROM}"),
+        POSFILE = os.path.join(OUTDIR, "STITCH", f"{stitch_paramspace.wildcard_pattern}", "TEMP", "{CHROM}", "{CHROM}" + ".POS"),
         OUTNAME = config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz",
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "STITCH", f"{stitch_paramspace.wildcard_pattern}", "CHROM", "{CHROM}"),
+        OUTDIR = os.path.join(OUTDIR, "STITCH", f"{stitch_paramspace.wildcard_pattern}", "CHROM", "{CHROM}"),
         PARAM = f"--{stitch_paramspace.wildcard_pattern}".replace("~", " --")
         # NHAP = config['STITCH']['NHAP'],
         # NGEN = config['STITCH']['NGEN'],
         # OTHER = config['STITCH']['OTHER']
     threads: config['STITCH']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
+    benchmark: os.path.join(OUTDIR, "BENCHMARK", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.txt")
+    log: os.path.join(OUTDIR, "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -443,11 +444,11 @@ rule STITCH:
 
 
 rule STITCH_CONCAT:
-    input: expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
+    input: expand(os.path.join(OUTDIR, "STITCH", "{stitch_params}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
     # input: expand(rules.STITCH.output.IMPUTED_VCF, CHROM = CHROM)
-    # input: expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_param}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), stitch_param = stitch_paramspace.instance_patterns)
-    output: expand(os.path.join(config['OUTPUT_DIR'], "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}_CONCAT.log")
+    # input: expand(os.path.join(OUTDIR, "STITCH", "{stitch_param}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), stitch_param = stitch_paramspace.instance_patterns)
+    output: expand(os.path.join(OUTDIR, "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
+    log: os.path.join(OUTDIR, "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}_CONCAT.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -472,9 +473,9 @@ rule GENEIMP:
     input:
         TARGET = rules.FILTERVCF_TARGET.output,
         REF = rules.REF_BEAGLE_PHASING.output
-    output: os.path.join(config['OUTPUT_DIR'], "GENEIMP", f"{geneimp_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz")
+    output: os.path.join(OUTDIR, "GENEIMP", f"{geneimp_paramspace.wildcard_pattern}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz")
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "GENEIMP"),
+        OUTDIR = os.path.join(OUTDIR, "GENEIMP"),
         OUTNAME = os.path.basename(rules.FILTERVCF_TARGET.output[0]).split(".")[0],
         PARAM = f"--{geneimp_paramspace.wildcard_pattern}".replace("~", " --")
         # KL = config['GENEIMP']['KL'],
@@ -483,8 +484,8 @@ rule GENEIMP:
         # HAP = config['GENEIMP']['HAP'],
         # FILTER = config['GENEIMP']['FILTER']
     threads: config['GENEIMP']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.log")
+    benchmark: os.path.join(OUTDIR, "BENCHMARK", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.txt")
+    log: os.path.join(OUTDIR, "LOG", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -512,9 +513,9 @@ rule QUILT:
         BAMlist = config['TARGET_BAM'],
         REF_VCF = rules.REF_BEAGLE_PHASING.output
     output:
-        IMPUTED_VCF = os.path.join(config['OUTPUT_DIR'], "QUILT", f"{quilt_paramspace.wildcard_pattern}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT.vcf.gz")
+        IMPUTED_VCF = os.path.join(OUTDIR, "QUILT", f"{quilt_paramspace.wildcard_pattern}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT.vcf.gz")
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "QUILT", f"{quilt_paramspace.wildcard_pattern}", "CHROM", "{CHROM}"),
+        OUTDIR = os.path.join(OUTDIR, "QUILT", f"{quilt_paramspace.wildcard_pattern}", "CHROM", "{CHROM}"),
         OUTNAME=config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT",
         PARAM = f"--{quilt_paramspace.wildcard_pattern}".replace("~", " --"),
         WINDOW_SIZE = config['QUILT']['WINDOW_SIZE'],
@@ -522,8 +523,8 @@ rule QUILT:
         # NGEN = config['QUILT']['NGEN'],
         # OTHER = config['QUILT']['OTHER']
     threads: config['QUILT']['THREADS']
-    benchmark: os.path.join(config['OUTPUT_DIR'], "BENCHMARK", f"QUILT_{quilt_paramspace.wildcard_pattern}" +"_CHROM{CHROM}.txt")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"QUILT_{quilt_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
+    benchmark: os.path.join(OUTDIR, "BENCHMARK", f"QUILT_{quilt_paramspace.wildcard_pattern}" +"_CHROM{CHROM}.txt")
+    log: os.path.join(OUTDIR, "LOG", f"QUILT_{quilt_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -566,9 +567,9 @@ rule QUILT:
         '''
 
 rule QUILT_CONCAT:
-    input: expand(os.path.join(config['OUTPUT_DIR'], "QUILT", "{quilt_params}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT.vcf.gz"), CHROM = CHROM, quilt_params = f"{quilt_paramspace.wildcard_pattern}".replace(" ", ""))
-    output: os.path.join(config['OUTPUT_DIR'], "QUILT", f"{quilt_paramspace.wildcard_pattern}".replace(" ", ""), config['PREFIX_NAME'] + "_QUILT.vcf.gz")
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", f"QUILT_{quilt_paramspace.wildcard_pattern}_CONCAT.log")
+    input: expand(os.path.join(OUTDIR, "QUILT", "{quilt_params}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT.vcf.gz"), CHROM = CHROM, quilt_params = f"{quilt_paramspace.wildcard_pattern}".replace(" ", ""))
+    output: os.path.join(OUTDIR, "QUILT", f"{quilt_paramspace.wildcard_pattern}".replace(" ", ""), config['PREFIX_NAME'] + "_QUILT.vcf.gz")
+    log: os.path.join(OUTDIR, "LOG", f"QUILT_{quilt_paramspace.wildcard_pattern}_CONCAT.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -591,14 +592,14 @@ rule QUILT_CONCAT:
 
 rule NGSRELATE_IMPUTED:
     input:
-        # os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
+        # os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
         rules.IMPUTATION.input
     output:
-        RESULTS = os.path.join(config['OUTPUT_DIR'], "POPGEN", "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + ".ngsrelate")
+        RESULTS = os.path.join(OUTDIR, "POPGEN", "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + ".ngsrelate")
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "NGSRELATE", "IMPUTED")
+        OUTDIR = os.path.join(OUTDIR, "POPGEN", "NGSRELATE", "IMPUTED")
     threads: workflow.cores * 0.5
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "NGSRELATE_IMPUTED.log")
+    log: os.path.join(OUTDIR, "LOG", "NGSRELATE_IMPUTED.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -613,9 +614,9 @@ rule NGSRELATE_IMPUTED:
             tmp_out=$(mktemp -p {params.OUTDIR})
             touch {output}
             tail -n+2 {output} > $tmp_out
-            echo -e "$(head -n1 {params.OUTDIR}/${{tool}}_${{param}}.ngsrelate)\tIMPUTATION\tPARAM" > {output}
+            echo -e "$(head -n1 {params.OUTDIR}/${{tool}}_${{param}}.ngsrelate)\tdata" > {output}
             cat $tmp_out >> {output}
-            tail -n+2 {params.OUTDIR}/${{tool}}_${{param}}.ngsrelate | awk -v tool="${{tool}}" -v param="${{param}}" 'BEGIN {{OFS="\t"}} {{print $0, tool, param}}' >> {output.RESULTS}
+            tail -n+2 {params.OUTDIR}/${{tool}}_${{param}}.ngsrelate | awk -v data="${{tool}}_${{param}}" 'BEGIN {{OFS="\t"}} {{print $0, data}}' >> {output.RESULTS}
             rm $id_list
             rm $tmp_out
         done
@@ -623,9 +624,9 @@ rule NGSRELATE_IMPUTED:
 
 rule KGD_IMPUTED:
     input:
-        os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
+        os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
     output:
-        RELATEDNESS = os.path.join(config['OUTPUT_DIR'], "POPGEN", "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_pairwise_relatedness.txt"),
+        RELATEDNESS = os.path.join(OUTDIR, "POPGEN", "KGD", "IMPUTED", "{tool}", config['PREFIX_NAME'] + "_{tool}_pairwise_relatedness.txt"),
     params:
         KGD_GMATRIX = os.path.abspath("scripts/KGD/GBS-Chip-Gmatrix.R")
     threads: 1
@@ -635,26 +636,26 @@ rule KGD_IMPUTED:
 
 rule GT4HAPPY:
     input:
-        # TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        # TEST = os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         TEST = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         REF = config['REFERENCE_SEQ']
     output: 
-        # os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz")
-        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns) if "QUILT" in IMPUTATION else [],
-        expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns) if "GLIMPSE" in IMPUTATION else []
+        # os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz")
+        expand(os.path.join(OUTDIR, "ACCURACY", "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "ACCURACY", "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "ACCURACY", "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "ACCURACY", "QUILT", "{quilt_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), quilt_params = quilt_paramspace.instance_patterns) if "QUILT" in IMPUTATION else [],
+        expand(os.path.join(OUTDIR, "ACCURACY", "GLIMPSE", "{glimpsePHASE_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), glimpsePHASE_params = glimpsePHASE_paramspace.instance_patterns) if "GLIMPSE" in IMPUTATION else []
     params:
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "ACCURACY"),
+        OUTDIR = os.path.join(OUTDIR, "ACCURACY"),
         PREFIX_NAME=config['PREFIX_NAME']
-    #     TRUTH_FREQ = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", "truth"),
-    #     SAMPLE = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + ".sample"),
-    #     VCF_TMP = os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_TMP.vcf.gz"),
+    #     TRUTH_FREQ = os.path.join(OUTDIR, "ACCURACY", "{tool}", "truth"),
+    #     SAMPLE = os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + ".sample"),
+    #     VCF_TMP = os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_TMP.vcf.gz"),
     #     OUTNAME_HP = config['PREFIX_NAME'] + "_{tool}_accuracy"
     threads: 1
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "GT4HAPPY.log")
+    log: os.path.join(OUTDIR, "LOG", "GT4HAPPY.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -678,11 +679,12 @@ rule GT4HAPPY:
 
 rule VARIANT_ACCURACY:
     input:
-        # TEST = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        # TEST = os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         TEST = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH
     output:
-        multiext(os.path.join(config['OUTPUT_DIR'], "ACCURACY", config['PREFIX_NAME']), "_accuracy_metrics_per_variant.tsv", "_accuracy_metrics_per_sample.tsv")
+        VARIANT = os.path.join(OUTDIR, "ACCURACY", config['PREFIX_NAME'] + "_accuracy_metrics_per_variant.tsv"),
+        SAMPLE = os.path.join(OUTDIR, "ACCURACY", config['PREFIX_NAME'] + "_accuracy_metrics_per_sample.tsv")
     threads: workflow.cores * 0.5
     script:
         "scripts/accuracy_metrics.R"
@@ -693,13 +695,13 @@ rule HAPLOTYPE_ACCURACY:
         TEST = rules.GT4HAPPY.output,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         REF = config['REFERENCE_SEQ']
-    output: os.path.join((config['OUTPUT_DIR']), "ACCURACY", config['PREFIX_NAME'] + "_accuracy_happy.csv")
+    output: os.path.join((OUTDIR), "ACCURACY", config['PREFIX_NAME'] + "_accuracy_happy.csv")
     params:
-        OUTDIR = os.path.join((config['OUTPUT_DIR']), "ACCURACY"),
+        OUTDIR = os.path.join((OUTDIR), "ACCURACY"),
         OUTNAME = config['PREFIX_NAME'] + "_accuracy"
     threads: workflow.cores * 0.5
     container: "docker://quay.io/biocontainers/hap.py:0.3.12--py27h0c9381b_0" # "docker://pkrusche/hap.py"
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "HAPLOTYPE_ACCURACY.log")
+    log: os.path.join(OUTDIR, "LOG", "HAPLOTYPE_ACCURACY.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -716,9 +718,9 @@ rule HAPLOTYPE_ACCURACY:
             tmp_out=$(mktemp -p ${{workdir}})
             touch {output}
             tail -n+2 {output} > ${{tmp_out}}
-            echo -e "$(head -n1 ${{workdir}}/{params.OUTNAME}.summary.csv),IMPUTATION,PARAM" > {output}
+            echo -e "$(head -n1 ${{workdir}}/{params.OUTNAME}.summary.csv),data" > {output}
             cat ${{tmp_out}} >> {output}
-            tail -n+2 ${{workdir}}/{params.OUTNAME}.summary.csv | awk -v tool="${{tool}}" -v param="${{param}}" 'BEGIN {{OFS=","}} {{print $0, tool, param}}'>> {output}
+            tail -n+2 ${{workdir}}/{params.OUTNAME}.summary.csv | awk -v data="${{tool}}_${{param}}" 'BEGIN {{OFS=","}} {{print $0, data}}'>> {output}
             rm ${{tmp_out}}
         done
         '''
@@ -734,15 +736,15 @@ POPS = " ".join(POPS)
 
 rule FST:
     input: 
-        # IMPUTE = expand(os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION),
+        # IMPUTE = expand(os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION),
         IMPUTE = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
-    output: os.path.join(config['OUTPUT_DIR'], "POPGEN", "FST", config['PREFIX_NAME'] + "_FST.txt")
+    output: os.path.join(OUTDIR, "POPGEN", "FST", config['PREFIX_NAME'] + "_FST.txt")
     params: 
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "FST")
+        OUTDIR = os.path.join(OUTDIR, "POPGEN", "FST")
     threads: 1
-    log: os.path.join(config['OUTPUT_DIR'], "LOG", "FST.log")
+    log: os.path.join(OUTDIR, "LOG", "FST.log")
     shell:
         '''
         exec > >(tee "{log}") 2>&1
@@ -786,17 +788,17 @@ rule FST:
 
 rule STAIRWAY_IMPUTED:
     input: 
-        # VCF = os.path.join(config['OUTPUT_DIR'], "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
+        # VCF = os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         VCF = rules.IMPUTATION.input,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
     output:
-        os.path.join(os.path.abspath(config['OUTPUT_DIR']), "POPGEN", "STAIRWAY_PLOT", config['PREFIX_NAME'] + "_stairwayplot_results.txt")
+        os.path.join(OUTDIR, "POPGEN", "STAIRWAY_PLOT", config['PREFIX_NAME'] + "_stairwayplot_results.txt")
     params:
         BLUEPRINT = "workflow/scripts/template.blueprint",
         SEQ_LEN = str(config['STAIRWAY_PLOT']['SEQUENCE_LENGTH']),
         MU = config['STAIRWAY_PLOT']['MUT_RATE'],
         PLOT_TITLE = config['PREFIX_NAME'],
-        OUTDIR = os.path.join(os.path.abspath(config['OUTPUT_DIR']), "POPGEN", "STAIRWAY_PLOT"),
+        OUTDIR = os.path.join(OUTDIR, "POPGEN", "STAIRWAY_PLOT"),
         PREFIX_NAME = config['PREFIX_NAME']
     script: "scripts/run_SFS_Stairway.R"
 
@@ -806,68 +808,71 @@ rule STAIRWAY_TRUTH:
         VCF = rules.FILTERVCF_REF.output.TRUTH,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
     output:
-        os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY_PLOT", "TRUTH", "stairway_results.txt")
+        os.path.join(OUTDIR, "POPGEN", "STAIRWAY_PLOT", "TRUTH", config['PREFIX_NAME'] + "stairway_results_TRUTH.txt")
     params:
-        BLUEPRINT = "scripts/template.blueprint",
+        BLUEPRINT = "workflow/scripts/template.blueprint",
         SEQ_LEN = config['STAIRWAY_PLOT']['SEQUENCE_LENGTH'],
         MU = config['STAIRWAY_PLOT']['MUT_RATE'],
         PLOT_TITLE = "Groundtruth-"+ config['PREFIX_NAME'],
-        OUTDIR = os.path.join(config['OUTPUT_DIR'], "POPGEN", "STAIRWAY_PLOT", "TRUTH"),
+        OUTDIR = os.path.join(OUTDIR, "POPGEN", "STAIRWAY_PLOT", "TRUTH"),
         PREFIX_NAME = config['PREFIX_NAME']
     script: "scripts/run_SFS_Stairway.R"
 
 
 rule POPGEN:
     input: 
-        rules.STAIRWAY_IMPUTED.output,
-        rules.STAIRWAY_TRUTH.output,
-        rules.FST.output if NPOP > 1 else ()
+        NGSRELATE_IMPUTED = rules.NGSRELATE_IMPUTED.output,
+        STAIRWAY_IMPUTED = rules.STAIRWAY_IMPUTED.output,
+        FST = rules.FST.output if NPOP > 1 else ()
 
 
 rule ACCURACY:
     input:
         NGSRELATE_BAM = rules.NGSRELATE_BAM.output,
         NGSRELATE_TRUTH = rules.NGSRELATE_TRUTH.output,
-        NGSRELATE_IMPUTED = expand(os.path.join(config['OUTPUT_DIR'], "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_{tool}.ngsrelate"), tool = IMPUTATION),
-        METRICS_SAM = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_sample.tsv"), tool = IMPUTATION),
-        METRICS_VAR = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_variant.tsv"), tool = IMPUTATION),
-        HAPPY = expand(os.path.join(config['OUTPUT_DIR'], "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION),
-        POPGEN = rules.POPGEN.input
+        METRICS_VAR = rules.VARIANT_ACCURACY.output.VARIANT,
+        METRICS_SAM = rules.VARIANT_ACCURACY.output.SAMPLE,
+        HAPPY = rules.HAPLOTYPE_ACCURACY.output,
+        STAIRWAY_TRUTH = rules.STAIRWAY_TRUTH.output,
+        # NGSRELATE_IMPUTED = expand(os.path.join(OUTDIR, "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_{tool}.ngsrelate"), tool = IMPUTATION),
+        # METRICS_SAM = expand(os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_sample.tsv"), tool = IMPUTATION),
+        # METRICS_VAR = expand(os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_variant.tsv"), tool = IMPUTATION),
+        # HAPPY = expand(os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION),
+        NGSRELATE_IMPUTED = rules.POPGEN.input.NGSRELATE_IMPUTED,
+        STAIRWAY_IMPUTED = rules.POPGEN.input.STAIRWAY_IMPUTED,
+        FST = rules.POPGEN.input.FST
     output:
         NGSRELATE_REL = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_Relatedness.png"),
+                os.path.join(OUTDIR, "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_Relatedness.png"),
                 labels={"figure": "1 - ngsRelate Pairwise Relatedness"}
             ),
         NGSRELATE_INBREEDING = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_Inbreeding.png"),
+                os.path.join(OUTDIR, "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_Inbreeding.png"),
                 labels={"figure": "2 - ngsRelate Inbreeding Coefficient"}
             ),
         HAPPY = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_happy.png"),
+                os.path.join(OUTDIR, "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_happy.png"),
                 labels={"figure": "3 - Hap.py Results"}
             ),
         VARIANT = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_accuracy_per_variant.png"),
+                os.path.join(OUTDIR, "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_accuracy_per_variant.png"),
                 labels={"figure": "4 - Accuracy Per Variant"}
             ),
         SAMPLE = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_accuracy_per_sample.png"),
+                os.path.join(OUTDIR, "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_accuracy_per_sample.png"),
                 labels={"figure": "5 - Accuracy Per Sample"}
             ),
         MAF = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_MAF_dist.png"),
+                os.path.join(OUTDIR, "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_MAF_dist.png"),
                 labels={"figure": "6 - Truth vs. Imputed MAF"}
             ),
         BENCHMARK = report(
-                os.path.join(config['OUTPUT_DIR'], "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_benchmark.png"),
+                os.path.join(OUTDIR, "ACCURACY", "PLOT", config['PREFIX_NAME'] + "_benchmark.png"),
                 labels={"figure": "7 - Benchmark"}
             )
     params:
-        BENCHMARK = os.path.join(config['OUTPUT_DIR'], "BENCHMARK")
+        BENCHMARK = os.path.join(OUTDIR, "BENCHMARK")
     threads: 1
     script:
         "scripts/plot_imputation_accuracy.R"
 
-
-## TODO:
-## - correct scripts for STAIRWAY_IMPUTED, output all the results for different tools in the same file

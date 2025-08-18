@@ -67,9 +67,25 @@ In addition, population genetic analyses will also be performed on the ground tr
 ## Run the pipeline
 1. Prepare [input data](#input-data)
 
-2. 
+2. Configure the pipeline
+- Prepare a config file with this [template](config/config.yaml). 
+- For each imputation tool - BEAGLE, STITCH, GLIMPSE2 (GLIMPSE2_phase), QUILT2, and GENEIMP, parameters can be provided in a csv file with different parameters in columns. Column names must match exactly parameter name, without the leading "--/-". Different sets of values for the parameters can be provided in different rows. If the csv file is not provided in the config file, default parameters will be used. Details of parameters for all the imputation tools can be found [here](config/params)
+- Number of CPUs (THREADS) for each tool in the config file must be specified.
 
+3. Run Snakemake:
+The pipeline can run upon 3 main steps (IMPUTATION, POPGEN, and ACCURACY evaluation) and it needs to be specified in the Snakemake command as below.
 
-Some scripts to test the pipeline are written in this [bash file](./run_test.sh)
+```
+## run imputation only (no downstream analysis)
+snakemake IMPUTATION --sdm apptainer --configfile config/config.yaml --cores 12
+
+## run imputation and downstream population genetic analysis
+snakemake POPGEN --sdm apptainer --configfile config/config.yaml --cores 12
+
+## run imputation, downstream analysis, and accuracy evaluation if a groundtruth is provided
+snakemake ACCURACY --sdm apptainer --configfile config/config.yaml --cores 12
+```
+A test data set of 10 LCS samples, with 10 samples in the reference panel, and a groundtruth set of SNPs, is provided in the `test` folder. Scripts to run the test can be found in this [bash file](./run_test.sh).
 
 ## Note
+Snakemake sometimes does not automatically detect the total number of cores for the pipeline, and users need to specified "--cores <N>".

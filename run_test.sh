@@ -1,7 +1,3 @@
-## activate snakemake
-conda activate snakemake
-mamba activate snakemake
-
 ## run imputation only
 snakemake IMPUTATION --sdm apptainer --configfile config/config.yaml
 

@@ -1,0 +1,269 @@
+Usage: /QUILT/QUILT2.R [options]
+
+
+Options:
+	--outputdir=OUTPUTDIR
+		What output directory to use
+
+	--chr=CHR
+		What chromosome to run. Should match BAM headers
+
+	--method=METHOD
+		What method to run (diploid or nipt) [default diploid] 
+
+	--regionStart=REGIONSTART
+		When running imputation, where to start from. The 1-based position x is kept if regionStart <= x <= regionEnd [default NA] 
+
+	--regionEnd=REGIONEND
+		When running imputation, where to stop [default NA] 
+
+	--buffer=BUFFER
+		Buffer of region to perform imputation over. So imputation is run form regionStart-buffer to regionEnd+buffer, and reported for regionStart to regionEnd, including the bases of regionStart and regionEnd [default NA] 
+
+	--fflist=FFLIST
+		Path to file with fetal fraction values, one row per entry, in the same order as the bamlist [default ""] 
+
+	--bamlist=BAMLIST
+		Path to file with bam file locations. File is one row per entry, path to bam files. Bam index files should exist in same directory as for each bam, suffixed either .bam.bai or .bai [default ""] 
+
+	--cramlist=CRAMLIST
+		Path to file with cram file locations. File is one row per entry, path to cram files. cram files are converted to bam files on the fly for parsing into QUILT [default ""] 
+
+	--sampleNames_file=SAMPLENAMES_FILE
+		Optional, if not specified, sampleNames are taken from the SM tag in the header of the BAM / CRAM file. This argument is the path to file with sampleNames for samples. It is used directly to name samples in the order they appear in the bamlist / cramlist [default ""] 
+
+	--reference=REFERENCE
+		Path to reference fasta used for making cram files. Only required if cramlist is defined [default ""] 
+
+	--nCores=NCORES
+		How many cores to use [default 1] 
+
+	--nGibbsSamples=NGIBBSSAMPLES
+		How many Gibbs samples to use [default 7] 
+
+	--n_seek_its=N_SEEK_ITS
+		How many iterations between first using current haplotypes to update read labels, and using current read labels to get new reference haplotypes, to perform [default 3] 
+
+	--n_burn_in_seek_its=N_BURN_IN_SEEK_ITS
+		How many iterations of the seek_its should be burn in. As an example, if n_seek_its is 3 and n_burn_in_seek_its is 2, then only the dosage from the final round is included. If n_seek_its is 4 and n_burn_in_seek_its is 2, then dosages from the last two rounds are used. Default value NA sets n_burn_in_seek_its to n_seek_its minus 1 [default NA] 
+
+	--Ksubset=KSUBSET
+		How many haplotypes to use in the faster Gibbs sampling [default 600] 
+
+	--Knew=KNEW
+		How many haplotypes to replace per-iteration after doing the full reference panel imputation [default 600] 
+
+	--K_top_matches=K_TOP_MATCHES
+		How many top haplotypes to store in each grid site when looking for good matches in the full haplotype reference panel. Large values potentially bring in more haplotype diversity, but risk losing haplotypes that are good matches over shorter distances [default 5] 
+
+	--output_gt_phased_genotypes=OUTPUT_GT_PHASED_GENOTYPES
+		When TRUE, output GT entry contains phased genotypes (haplotypes). When FALSE, it is from the genotype posteriors, and masked when the maximum genotype posterior entry is less than 0.9 [default TRUE] 
+
+	--heuristic_match_thin=HEURISTIC_MATCH_THIN
+		What fraction of grid sites to use when looking for good matches in the full haplotype reference panel. Smaller values run faster but potentially miss haplotypes [default 0.1] 
+
+	--output_filename=OUTPUT_FILENAME
+		Override the default bgzip-VCF / bgen output name with this given file name. Please note that this does not change the names of inputs or outputs (e.g. RData, plots), so if outputdir is unchanged and if multiple QUILT runs are processing on the same region then they may over-write each others inputs and outputs. [default NULL] 
+
+	--RData_objects_to_save=RDATA_OBJECTS_TO_SAVE
+		Can be used to name interim and misc results from imputation to save an an RData file. Default NULL means do not save such output [default NULL] 
+
+	--output_RData_filename=OUTPUT_RDATA_FILENAME
+		Override the default location for miscellaneous outputs saved in RData format [default NULL] 
+
+	--prepared_reference_filename=PREPARED_REFERENCE_FILENAME
+		Optional path to prepared RData file with reference objects. Can be used instead of outputdir to coordinate use of QUILT_prepare_reference and QUILT [default ""] 
+
+	--save_prepared_reference=SAVE_PREPARED_REFERENCE
+		If preparing reference as part of running QUILT, whether to save the prepared reference output file. Note that if the reference was already made using QUILT_prepare_reference, this is ignored [default FALSE] 
+
+	--tempdir=TEMPDIR
+		What directory to use as temporary directory. If set to NA, use default R tempdir. If possible, use ramdisk, like /dev/shm/ [default NA] 
+
+	--bqFilter=BQFILTER
+		Minimum BQ for a SNP in a read. Also, the algorithm uses bq<=mq, so if mapping quality is less than this, the read isnt used [default as.integer(17)] 
+
+	--panel_size=PANEL_SIZE
+		Integer number of reference haplotypes to use, set to NA to use all of them [default NA] 
+
+	--posfile=POSFILE
+		Optional, only needed when using genfile or phasefile. File with positions of where to impute, lining up one-to-one with genfile. File is tab seperated with no header, one row per SNP, with col 1 = chromosome, col 2 = physical position (sorted from smallest to largest), col 3 = reference base, col 4 = alternate base. Bases are capitalized. Example first row: 1<tab>1000<tab>A<tab>G<tab> [default ""] 
+
+	--genfile=GENFILE
+		Path to gen file with high coverage results. Empty for no genfile. If both genfile and phasefile are given, only phasefile is used, as genfile (unphased genotypes) is derivative to phasefile (phased genotypes). File has a header row with a name for each sample, matching what is found in the bam file. Each subject is then a tab seperated column, with 0 = hom ref, 1 = het, 2 = hom alt and NA indicating missing genotype, with rows corresponding to rows of the posfile. Note therefore this file has one more row than posfile which has no header [default ""] 
+
+	--phasefile=PHASEFILE
+		Path to phase file with truth phasing results. Empty for no phasefile. Supercedes genfile if both options given. File has a header row with a name for each sample, matching what is found in the bam file. Each subject is then a tab seperated column, with 0 = ref and 1 = alt, separated by a vertical bar |, e.g. 0|0 or 0|1. Note therefore this file has one more row than posfile which has no header. [default ""] 
+
+	--maxDifferenceBetweenReads=MAXDIFFERENCEBETWEENREADS
+		How much of a difference to allow the reads to make in the forward backward probability calculation. For example, if P(read | state 1)=1 and P(read | state 2)=1e-6, re-scale so that their ratio is this value. This helps prevent any individual read as having too much of an influence on state changes, helping prevent against influence by false positive SNPs [default 1e10] 
+
+	--make_plots=MAKE_PLOTS
+		Whether to make some plots of per-sample imputation. Especially nice when truth data. This is pretty slow though so useful more for debugging and understanding and visualizing performance [default FALSE] 
+
+	--make_plots_block_gibbs=MAKE_PLOTS_BLOCK_GIBBS
+		Whether to make some plots of per-sample imputation looking at how the block Gibbs is performing. This can be extremely slow so use for debugging or visualizing performance on one-off situations not for general runs [default FALSE] 
+
+	--verbose=VERBOSE
+		whether to be more verbose when running [default TRUE] 
+
+	--shuffle_bin_radius=SHUFFLE_BIN_RADIUS
+		Parameter that controls how to detect ancestral haplotypes that are shuffled during EM for possible re-setting. If set (not NULL), then recombination rate is calculated around pairs of SNPs in window of twice this value, and those that exceed what should be the maximum (defined by nGen and maxRate) are checked for whether they are shuffled [default 5000] 
+
+	--iSizeUpperLimit=ISIZEUPPERLIMIT
+		Do not use reads with an insert size of more than this value [default 1e6] 
+
+	--output_read_label_prob=OUTPUT_READ_LABEL_PROB
+		Whether to output read labels after the final Gibbs samplings (i.e. whether reads were assigned to arbitrary labelled haplotype 1 or 2 and the probability) [default FALSE] 
+
+	--record_read_label_usage=RECORD_READ_LABEL_USAGE
+		Whether to store what read labels were used during the Gibbs samplings (i.e. whether reads were assigned to arbitrary labelled haplotype 1 or 2) [default FALSE] 
+
+	--record_interim_dosages=RECORD_INTERIM_DOSAGES
+		Whether to record interim dosages or not [default FALSE] 
+
+	--use_bx_tag=USE_BX_TAG
+		Whether to try and use BX tag in same to indicate that reads come from the same underlying molecule [default TRUE] 
+
+	--bxTagUpperLimit=BXTAGUPPERLIMIT
+		When using BX tag, at what distance between reads to consider reads with the same BX tag to come from different molecules [default 50000] 
+
+	--addOptimalHapsToVCF=ADDOPTIMALHAPSTOVCF
+		Whether to add optimal haplotypes to vcf when phasing information is present, where optimal is imputation done when read label origin is known [default FALSE] 
+
+	--estimate_bq_using_truth_read_labels=ESTIMATE_BQ_USING_TRUTH_READ_LABELS
+		When using phasefile with known truth haplotypes, infer truth read labels, and use them to infer the real base quality against the bam recorded base qualities [default FALSE] 
+
+	--override_default_params_for_small_ref_panel=OVERRIDE_DEFAULT_PARAMS_FOR_SMALL_REF_PANEL
+		When set to TRUE, then when using a smaller reference panel size (fewer haplotypes than Ksubset), parameter choices are reset appropriately. When set to FALSE, original values are used, which might crash QUILT [default TRUE] 
+
+	--gamma_physically_closest_to=GAMMA_PHYSICALLY_CLOSEST_TO
+		For HLA imputation, the physical position closest to the centre of the gene [default NA] 
+
+	--seed=SEED
+		The seed that controls random number generation. When NA, not used# [default NA] 
+
+	--hla_run=HLA_RUN
+		Whether to use QUILT to generate posterior state probabilities as part of QUILT-HLA [default FALSE] 
+
+	--downsampleToCov=DOWNSAMPLETOCOV
+		What coverage to downsample individual sites to. This ensures no floating point errors at sites with really high coverage [default 30] 
+
+	--minGLValue=MINGLVALUE
+		For non-Gibbs full imputation, minimum allowed value in haplotype gl, after normalization. In effect, becomes 1/minGLValue becomes maximum difference allowed between genotype likelihoods [default 1e-10] 
+
+	--minimum_number_of_sample_reads=MINIMUM_NUMBER_OF_SAMPLE_READS
+		Minimum number of sample reads a sample must have for imputation to proceed. Samples that have fewer reads than this will not be imputed in a given region and all output will be set to missing [default 2] 
+
+	--nGen=NGEN
+		Number of generations since founding or mixing. Note that the algorithm is relatively robust to this. Use nGen = 4 * Ne / K if unsure [default NA] 
+
+	--reference_vcf_file=REFERENCE_VCF_FILE
+		Path to reference VCF file with haplotypes, matching the reference haplotype and legend file [default ""] 
+
+	--reference_haplotype_file=REFERENCE_HAPLOTYPE_FILE
+		Path to reference haplotype file in IMPUTE format (file with no header and no rownames, one row per SNP, one column per reference haplotype, space separated, values must be 0 or 1) [default ""] 
+
+	--reference_legend_file=REFERENCE_LEGEND_FILE
+		Path to reference haplotype legend file in IMPUTE format (file with one row per SNP, and a header including position for the physical position in 1 based coordinates, a0 for the reference allele, and a1 for the alternate allele) [default ""] 
+
+	--reference_sample_file=REFERENCE_SAMPLE_FILE
+		Path to reference sample file (file with header, one must be POP, corresponding to populations that can be specified using reference_populations) [default ""] 
+
+	--reference_populations=REFERENCE_POPULATIONS
+		Vector with character populations to include from reference_sample_file e.g. CHB, CHS [default NA] 
+
+	--reference_phred=REFERENCE_PHRED
+		Phred scaled likelihood or an error of reference haplotype. Higher means more confidence in reference haplotype genotypes, lower means less confidence [default 30] 
+
+	--reference_exclude_samplelist_file=REFERENCE_EXCLUDE_SAMPLELIST_FILE
+		File with one column of samples to exclude from reference samples e.g. in validation, the samples you are imputing [default ""] 
+
+	--region_exclude_file=REGION_EXCLUDE_FILE
+		File with regions to exclude from constructing the reference panel. Particularly useful for QUILT_HLA, where you want to exclude SNPs in the HLA genes themselves, so that reads contribute either to the read mapping or state inference. This file is space separated with a header of Name, Chr, Start and End, with Name being the HLA gene name (e.g. HLA-A), Chr being the chromosome (e.g. chr6), and Start and End are the 1-based starts and ends of the genes (i.e. where we don't want to consider SNPs for the Gibbs sampling state inference) [default ""] 
+
+	--genetic_map_file=GENETIC_MAP_FILE
+		Path to file with genetic map information, a file with 3 white-space delimited entries giving position (1-based), genetic rate map in cM/Mbp, and genetic map in cM. If no file included, rate is based on physical distance and expected rate (expRate) [default ""] 
+
+	--nMaxDH=NMAXDH
+		Integer Maximum number of distinct haplotypes to store in reduced form. Recommended to keep as 2 ** N - 1 where N is an integer greater than 0 i.e. 255, 511, etc [default NA] 
+
+	--make_fake_vcf_with_sites_list=MAKE_FAKE_VCF_WITH_SITES_LIST
+		Whether to output a list of sites as a minimal VCF, for example to use with GATK 3 to genotype given sites [default FALSE] 
+
+	--output_sites_filename=OUTPUT_SITES_FILENAME
+		If make_fake_vcf_with_sites_list is TRUE, optional desired filename where to output sites VCF [default NA] 
+
+	--expRate=EXPRATE
+		Expected recombination rate in cM/Mb [default 1] 
+
+	--maxRate=MAXRATE
+		Maximum recomb rate cM/Mb [default 100] 
+
+	--minRate=MINRATE
+		Minimum recomb rate cM/Mb [default 0.1] 
+
+	--print_extra_timing_information=PRINT_EXTRA_TIMING_INFORMATION
+		Print extra timing information, i.e. how long sub-processes take, to better understand why things take as long as they do [default FALSE] 
+
+	--small_ref_panel_block_gibbs_iterations=SMALL_REF_PANEL_BLOCK_GIBBS_ITERATIONS
+		What iterations to perform block Gibbs sampling for the Gibbs sampler [default c(3, 6, 9)] 
+
+	--small_ref_panel_gibbs_iterations=SMALL_REF_PANEL_GIBBS_ITERATIONS
+		How many iterations to run the Gibbs sampler for each time it is run (i.e. how many full passes to run the Gibbs sampler over all the reads) [default 20] 
+
+	--plot_per_sample_likelihoods=PLOT_PER_SAMPLE_LIKELIHOODS
+		Plot per sample likelihoods i.e. the likelihood as the method progresses through the Gibbs sampling iterations [default FALSE] 
+
+	--use_small_eHapsCurrent_tc=USE_SMALL_EHAPSCURRENT_TC
+		For testing purposes only [default FALSE] 
+
+	--mspbwtL=MSPBWTL
+		How many neighouring haplotypes to scan up and down at each grid. [default 3] 
+
+	--mspbwtM=MSPBWTM
+		Minimun long grids matches [default 1] 
+
+	--use_mspbwt=USE_MSPBWT
+		Use msPBWT to select new haplotypes [default TRUE] 
+
+	--mspbwt_nindices=MSPBWT_NINDICES
+		How many mspbwt indices to build [default 4L] 
+
+	--use_splitreadgl=USE_SPLITREADGL
+		Use split real GL in hap selection and imputation [default FALSE] 
+
+	--override_use_eMatDH_special_symbols=OVERRIDE_USE_EMATDH_SPECIAL_SYMBOLS
+		Not for general use. If NA will choose version appropriately depending on whether a PBWT flavour is used. [default NA] 
+
+	--use_hapMatcherR=USE_HAPMATCHERR
+		Used for nMaxDH less than or equal to 255. Use R raw format to hold hapMatcherR. Lowers RAM use [default TRUE] 
+
+	--shard_check_every_pair=SHARD_CHECK_EVERY_PAIR
+		When using shard gibbs sampler, whether to check every pair of SNPs, or not [default TRUE] 
+
+	--use_eigen=USE_EIGEN
+		Use eigen library for per haploid full li and stephens pass of full haplotype reference panel [default TRUE] 
+
+	--impute_rare_common=IMPUTE_RARE_COMMON
+		Whether to use common SNPs first for imputation, followed by a round of rare imputation [default TRUE] 
+
+	--rare_af_threshold=RARE_AF_THRESHOLD
+		Allele frequency yhreshold under which SNPs are considered rare, otherwise they are considered common [default 0.001] 
+
+	--make_heuristic_plot=MAKE_HEURISTIC_PLOT
+		Whether to make a plot for understanding heuristic performance [default FALSE] 
+
+	--heuristic_approach=HEURISTIC_APPROACH
+		Which heuristic to use [default 'A'] 
+
+	--use_list_of_columns_of_A=USE_LIST_OF_COLUMNS_OF_A
+		If when using mspbwt, use columns of A rather than the whole thing, to speed up this version [default TRUE] 
+
+	--calculate_gamma_on_the_fly=CALCULATE_GAMMA_ON_THE_FLY
+		If when calculating genProbs, calculate gamma on the fly rather than saving [default TRUE] 
+
+	-h, --help
+		Show this help message and exit
+
+

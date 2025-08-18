@@ -37,14 +37,12 @@ for (vcffile in vcffile_list) {
     pop_dir <- paste0(outdir, "/", pop)
     
     if (dir.exists(pop_dir)) unlink(pop_dir, recursive = T)
-    # print(pop_dir)
     dir.create(pop_dir, recursive = T)
     file.copy(stairway_plot_es_path, pop_dir, recursive = T)
 
     setwd(pop_dir)
 
     updated_bp <- paste0(pop, ".blueprint")
-    print(updated_bp)
     writeLines(blueprint, updated_bp)
     
     stairway_build_cmd <- paste("java -cp stairway_plot_es Stairbuilder", updated_bp)
