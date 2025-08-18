@@ -30,7 +30,7 @@ Five imputation tools are available and all can be executed in the same pipeline
 
 Prior to imputation, reference VCF file will be filtered out for fixed alleles. If BEAGLE or GeneImp is executed, SNP calling and filtering will be performed by bcftools mpileup and bcftools filter, then the output VCF file will be used for imputation.
 
-**Imputed VCF files are created in <OUTPUT_DIR>/<TOOL>/<PARAMETER>/<PREFIX>_<TOOL>.vcf.gz.**
+Imputed VCF files are created in `<OUTPUT_DIR>/<TOOL>/<PARAMETER>/<PREFIX>_<TOOL>.vcf.gz`.
 
 ### Population genetic analysis
 
@@ -39,7 +39,7 @@ Analyses will be performed on the imputed genotypes:
 - Demographic inference by vcf2sfs and stairway plot v2
 - Fst between populations, if more than 1 population are specified
 
-**Results are stored in <OUTPUT_DIR>/POPGEN/<ANALYSIS> folders.**
+Results are stored in `<OUTPUT_DIR>/POPGEN/<ANALYSIS>` folders.
 
 ### Evaluation of imputation performance
 
@@ -53,11 +53,13 @@ If a ground truth is present, imputation accuracy will be measured by comparing 
 - F1 score = recall * precision / (recall + precision)
 - Po, Pc, and IQS are described [here](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0009697)
 
-Imputed genotypes are also compared with the ground truth by [hap.py](https://github.com/Illumina/hap.py) for haplotype comparisons.
+Imputed genotypes are also compared with the ground truth by [hap.py](https://github.com/Illumina/hap.py) for haplotype comparisons. In addition, population genetic analyses will also be performed on the ground truth for assessing the effects of imputation on downstream analysis.
 
-In addition, population genetic analyses will also be performed on the ground truth for assessing the effects of imputation on downstream analysis.
-
-**Output data include:**
+Output data is in folder `<OUTPUT_DIR>/ACCURACY`, including:
+- <OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_metrics_per_sample.tsv: accuracy metrics per sample for all the imputed data
+- <OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_metrics_per_variant.tsv: accuracy metrics per variant for all the imputed data
+- <OUTPUT_DIR>/ACCURACY/<PREFIX>_accuracy_happy.tsv: hap.py results for all the imputed data
+- <OUTPUT_DIR>/ACCURACY/PLOT: plots of all the accuracy metrics, as well as comparison plots of genetic relatedness, inbreeding, and MAF between the imputed data and groundtruth.
 
 
 ## Software requirement
