@@ -70,7 +70,6 @@ OUTDIR = os.path.abspath(config['OUTPUT_DIR'])
 
 rule IMPUTATION:
     input:
-        # expand(os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION)
         expand(os.path.join(OUTDIR, "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
         expand(os.path.join(OUTDIR, "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_BEAGLE.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
         expand(os.path.join(OUTDIR, "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_GENEIMP.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
@@ -416,9 +415,6 @@ rule STITCH:
         OUTNAME = config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz",
         OUTDIR = os.path.join(OUTDIR, "STITCH", f"{stitch_paramspace.wildcard_pattern}", "CHROM", "{CHROM}"),
         PARAM = f"--{stitch_paramspace.wildcard_pattern}".replace("~", " --")
-        # NHAP = config['STITCH']['NHAP'],
-        # NGEN = config['STITCH']['NGEN'],
-        # OTHER = config['STITCH']['OTHER']
     threads: config['STITCH']['THREADS']
     benchmark: os.path.join(OUTDIR, "BENCHMARK", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.txt")
     log: os.path.join(OUTDIR, "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
@@ -443,8 +439,6 @@ rule STITCH:
 
 rule STITCH_CONCAT:
     input: expand(os.path.join(OUTDIR, "STITCH", "{stitch_params}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
-    # input: expand(rules.STITCH.output.IMPUTED_VCF, CHROM = CHROM)
-    # input: expand(os.path.join(OUTDIR, "STITCH", "{stitch_param}", "CHROM", "{CHROM}", config['PREFIX_NAME'] + "_{CHROM}" + "_STITCH.vcf.gz"), stitch_param = stitch_paramspace.instance_patterns)
     output: expand(os.path.join(OUTDIR, "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_STITCH.vcf.gz"), CHROM = CHROM, stitch_params = f"{stitch_paramspace.wildcard_pattern}")
     log: os.path.join(OUTDIR, "LOG", f"STITCH_{stitch_paramspace.wildcard_pattern}_CONCAT.log")
     shell:
@@ -476,11 +470,6 @@ rule GENEIMP:
         OUTDIR = os.path.join(OUTDIR, "GENEIMP"),
         OUTNAME = os.path.basename(rules.FILTERVCF_TARGET.output[0]).split(".")[0],
         PARAM = f"--{geneimp_paramspace.wildcard_pattern}".replace("~", " --")
-        # KL = config['GENEIMP']['KL'],
-        # FLANK = config['GENEIMP']['FLANKSIZE'],
-        # FL = int(float(config['GENEIMP']['FLANKSIZE'])*100),
-        # HAP = config['GENEIMP']['HAP'],
-        # FILTER = config['GENEIMP']['FILTER']
     threads: config['GENEIMP']['THREADS']
     benchmark: os.path.join(OUTDIR, "BENCHMARK", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.txt")
     log: os.path.join(OUTDIR, "LOG", f"GENEIMP_{geneimp_paramspace.wildcard_pattern}.log")
@@ -517,9 +506,6 @@ rule QUILT:
         OUTNAME=config['PREFIX_NAME'] + "_{CHROM}" + "_QUILT",
         PARAM = f"--{quilt_paramspace.wildcard_pattern}".replace("~", " --"),
         WINDOW_SIZE = config['QUILT']['WINDOW_SIZE'],
-        # BUFFER_SIZE = config['QUILT']['BUFFER_SIZE'],
-        # NGEN = config['QUILT']['NGEN'],
-        # OTHER = config['QUILT']['OTHER']
     threads: config['QUILT']['THREADS']
     benchmark: os.path.join(OUTDIR, "BENCHMARK", f"QUILT_{quilt_paramspace.wildcard_pattern}" +"_CHROM{CHROM}.txt")
     log: os.path.join(OUTDIR, "LOG", f"QUILT_{quilt_paramspace.wildcard_pattern}" + "_CHROM{CHROM}.log")
@@ -590,7 +576,6 @@ rule QUILT_CONCAT:
 
 rule NGSRELATE_IMPUTED:
     input:
-        # os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz")
         rules.IMPUTATION.input
     output:
         RESULTS = os.path.join(OUTDIR, "POPGEN", "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + ".ngsrelate")
@@ -634,12 +619,10 @@ rule KGD_IMPUTED:
 
 rule GT4HAPPY:
     input:
-        # TEST = os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         TEST = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         REF = config['REFERENCE_SEQ']
     output: 
-        # os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_4compare.vcf.gz")
         expand(os.path.join(OUTDIR, "ACCURACY", "STITCH", "{stitch_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), stitch_params = stitch_paramspace.instance_patterns) if "STITCH" in IMPUTATION else [],
         expand(os.path.join(OUTDIR, "ACCURACY", "BEAGLE", "{beagle_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), beagle_params = beagle_paramspace.instance_patterns) if "BEAGLE" in IMPUTATION else [],
         expand(os.path.join(OUTDIR, "ACCURACY", "GENEIMP", "{geneimp_params}", config['PREFIX_NAME'] + "_4compare.vcf.gz"), geneimp_params = geneimp_paramspace.instance_patterns) if "GENEIMP" in IMPUTATION else [],
@@ -648,10 +631,6 @@ rule GT4HAPPY:
     params:
         OUTDIR = os.path.join(OUTDIR, "ACCURACY"),
         PREFIX_NAME=config['PREFIX_NAME']
-    #     TRUTH_FREQ = os.path.join(OUTDIR, "ACCURACY", "{tool}", "truth"),
-    #     SAMPLE = os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + ".sample"),
-    #     VCF_TMP = os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_TMP.vcf.gz"),
-    #     OUTNAME_HP = config['PREFIX_NAME'] + "_{tool}_accuracy"
     threads: 1
     log: os.path.join(OUTDIR, "LOG", "GT4HAPPY.log")
     shell:
@@ -677,7 +656,6 @@ rule GT4HAPPY:
 
 rule VARIANT_ACCURACY:
     input:
-        # TEST = os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         TEST = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH
     output:
@@ -734,7 +712,6 @@ POPS = " ".join(POPS)
 
 rule FST:
     input: 
-        # IMPUTE = expand(os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"), tool = IMPUTATION),
         IMPUTE = rules.IMPUTATION.input,
         TRUTH = rules.FILTERVCF_REF.output.TRUTH,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
@@ -786,7 +763,6 @@ rule FST:
 
 rule STAIRWAY_IMPUTED:
     input: 
-        # VCF = os.path.join(OUTDIR, "{tool}", config['PREFIX_NAME'] + "_{tool}.vcf.gz"),
         VCF = rules.IMPUTATION.input,
         POPFILE = config['STAIRWAY_PLOT']['POPFILE']
     output:
@@ -832,10 +808,6 @@ rule ACCURACY:
         METRICS_SAM = rules.VARIANT_ACCURACY.output.SAMPLE,
         HAPPY = rules.HAPLOTYPE_ACCURACY.output,
         STAIRWAY_TRUTH = rules.STAIRWAY_TRUTH.output,
-        # NGSRELATE_IMPUTED = expand(os.path.join(OUTDIR, "NGSRELATE", "IMPUTED", config['PREFIX_NAME'] + "_{tool}.ngsrelate"), tool = IMPUTATION),
-        # METRICS_SAM = expand(os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_sample.tsv"), tool = IMPUTATION),
-        # METRICS_VAR = expand(os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy_metrics_per_variant.tsv"), tool = IMPUTATION),
-        # HAPPY = expand(os.path.join(OUTDIR, "ACCURACY", "{tool}", config['PREFIX_NAME'] + "_{tool}_accuracy.extended.csv"), tool = IMPUTATION),
         NGSRELATE_IMPUTED = rules.POPGEN.input.NGSRELATE_IMPUTED,
         STAIRWAY_IMPUTED = rules.POPGEN.input.STAIRWAY_IMPUTED,
         FST = rules.POPGEN.input.FST
