@@ -2,12 +2,6 @@ Usage: /usr/bin/STITCH [options]
 
 
 Options:
-	--chr=CHR
-		What chromosome to run. Should match BAM headers
-
-	--posfile=POSFILE
-		Where to find file with positions to run. File is tab seperated with no header, one row per SNP, with col 1 = chromosome, col 2 = physical position (sorted from smallest to largest), col 3 = reference base, col 4 = alternate base. Bases are capitalized. Example first row: 1<tab>1000<tab>A<tab>G<tab>
-
 	--K=K
 		How many founder / mosaic haplotypes to use
 
@@ -16,15 +10,6 @@ Options:
 
 	--nGen=NGEN
 		Number of generations since founding or mixing. Note that the algorithm is relatively robust to this. Use nGen = 4 * Ne / K if unsure
-
-	--outputdir=OUTPUTDIR
-		What output directory to use
-
-	--tempdir=TEMPDIR
-		What directory to use as temporary directory. If set to NA, use default R tempdir. If possible, use ramdisk, like /dev/shm/ [default NA] 
-
-	--bamlist=BAMLIST
-		Path to file with bam file locations. File is one row per entry, path to bam files. Bam index files should exist in same directory as for each bam, suffixed either .bam.bai or .bai [default ""] 
 
 	--cramlist=CRAMLIST
 		Path to file with cram file locations. File is one row per entry, path to cram files. cram files are converted to bam files on the fly for parsing into STITCH [default ""] 
@@ -100,9 +85,6 @@ Options:
 
 	--splitReadIterations=SPLITREADITERATIONS
 		Iterations to try and split reads which may span recombination breakpoints for a better fit [default 25] 
-
-	--nCores=NCORES
-		How many cores to use [default 1] 
 
 	--expRate=EXPRATE
 		Expected recombination rate in cM/Mb [default 0.5] 
@@ -185,9 +167,6 @@ Options:
 	--reference_shuffleHaplotypeIterations=REFERENCE_SHUFFLEHAPLOTYPEITERATIONS
 		When using reference haplotypes, how much shuffling to do to lead to better global fit [default c(4, 8, 12, 16)] 
 
-	--output_filename=OUTPUT_FILENAME
-		Override the default bgzip-VCF / bgen output name with this given file name. Please note that this does not change the names of inputs or outputs (e.g. RData, plots), so if outputdir is unchanged and if multiple STITCH runs are processing on the same region then they may over-write each others inputs and outputs [default NULL] 
-
 	--initial_min_hapProb=INITIAL_MIN_HAPPROB
 		Initial lower bound for probability read comes from haplotype. Double bounded between 0 and 1 [default 0.2] 
 
@@ -232,8 +211,3 @@ Options:
 
 	--bxTagUpperLimit=BXTAGUPPERLIMIT
 		When using BX tag, at what distance between reads to consider reads with the same BX tag to come from different molecules [default 50000] 
-
-	-h, --help
-		Show this help message and exit
-
-

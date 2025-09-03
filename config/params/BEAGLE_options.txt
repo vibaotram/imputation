@@ -3,9 +3,7 @@ Copyright (C) 2014-2022 Brian L. Browning
 Usage: java -jar beagle.06Aug24.a91.jar [arguments]
 
 data parameters ...
-  gt=<VCF file with GT FORMAT field>                 (required)
   ref=<bref3 or VCF file with phased genotypes>      (optional)
-  out=<output file prefix>                           (required)
   map=<PLINK map file with cM units>                 (optional)
   chrom=<[chrom] or [chrom]:[start]-[end]>           (optional)
   excludesamples=<file with 1 sample ID per line>    (optional)
@@ -30,6 +28,5 @@ general parameters ...
   window=<window length in cM>                       (default=40.0)
   overlap=<window overlap in cM>                     (default=2.0)
   seed=<random seed>                                 (default=-99999)
-  nthreads=<number of threads>                       (default: machine dependent)
 
 

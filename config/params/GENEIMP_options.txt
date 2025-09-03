@@ -2,12 +2,6 @@ Usage: workflow/scripts/GeneImp.R [options]
 
 
 Options:
-	--target=TARGET
-		Path to the VCF file containing the genotype likelihoods for the target samples. Genotype likelihoods are read from the PL field. The file must contain reads from a single chromosome.
-
-	--ref=REF
-		Path to the VCF file containing phased genotypes for the reference panel. Reference haplotypes are read from the GT field which is always assumed to contain phased genotypes. The file must contain variants from a single chromosome.
-
 	--klthresh=KLTHRESH
 		Size of the imputation window. Larger values will result in larger windows. The klthresh option determines the size of the imputation window. In target data with average sequencing depth 0.5x setting the klthresh to 15, 20, 25, 30, 35 resulted in windows with median length 58, 79, 100, 121, 142kb respectively. In data with deeper sequencing smaller values for the klthresh should be used to get windows with similar median lengths. Only the central part of each window is imputed based on the flanksize option.
 
@@ -21,22 +15,8 @@ Size of the flanking segments left and right of the imputation window. The flank
 	--numfilterhaps=NUMFILTERHAPS
 		Number of reference haplotypes to select in the filtering step.
 
-	--maxjobs=MAXJOBS
-		Maximum number of parallel processes to run with doMC.
-
-	--writedir=WRITEDIR
-		Directory where the imputed data will be saved. Specify if different from current directory.
-
-	--tempdir=TEMPDIR
-		Directory for storing large files used during the imputation, such as the file.backed bigmatrix containing the reference haplotypes. Specify if different from current directory.
-
 	--verbose=VERBOSE
 		Print various messages as the code executes.
 
 	--diagnostics=DIAGNOSTICS
 		Set to TRUE to write imputation diagnostics, such as window positions, filtered haplotypes and haplotype probabilities. Files are written in the temp.dir if specified. CAREFUL: these files are written for every sample.
-
-	-h, --help
-		Show this help message and exit
-
-

@@ -62,7 +62,7 @@ GENEIMP:
     THREADS: 6
 
 QUILT:
-    WINDOW_SIZE: 1000000
+    WINDOW_SIZE: 1000000 ## options --regionStart/--regionEnd are required by QUILT, but will be automatically decided in the pipeline based on this parameter
     PARAM: "config/quilt_param.csv" # a csv file containing parameters in columns and values in rows, or "" for default settings
     THREADS: 6
     # MEM_MB: 8G

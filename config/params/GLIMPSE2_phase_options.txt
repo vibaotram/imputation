@@ -8,30 +8,10 @@
   * Run date      	 : 18/08/2025 - 12:09:35
 
 Basic parameters:
-  --help                               Produces help message
   --seed arg (=15052011)               Seed of the random number generator
   --threads arg (=1)                   Number of threads
 
 Input parameters:
-  --bam-file arg                       Input BAM/CRAM file containing 
-                                       low-coverage sequencing reads. Only one 
-                                       of the following options can be 
-                                       declared: --input-gl, --bam-file, 
-                                       --bam-list.
-  --bam-list arg                       List (.txt file) of input BAM/CRAM files
-                                       containing low-coverage sequencing 
-                                       reads. One file per line. A second 
-                                       column (space separated) can be used to 
-                                       specify the sample name, otherwise the 
-                                       name of the file is used. Only one of 
-                                       the following options can be declared: 
-                                       --input-gl, --bam-file, --bam-list.
-  --input-gl arg                       VCF/BCF file containing the genotype 
-                                       likelihoods. Only one of the following 
-                                       options can be declared: --input-gl, 
-                                       --bam-file, --bam-list.
-  -R [ --reference ] arg               Haplotype reference in VCF/BCF or binary
-                                       format
   -M [ --map ] arg                     Genetic map
   --input-region arg                   Imputation region with buffers
   --output-region arg                  Imputation region without buffers

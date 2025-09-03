@@ -2,29 +2,15 @@ Usage: /QUILT/QUILT2.R [options]
 
 
 Options:
-	--outputdir=OUTPUTDIR
-		What output directory to use
-
-	--chr=CHR
-		What chromosome to run. Should match BAM headers
 
 	--method=METHOD
 		What method to run (diploid or nipt) [default diploid] 
-
-	--regionStart=REGIONSTART
-		When running imputation, where to start from. The 1-based position x is kept if regionStart <= x <= regionEnd [default NA] 
-
-	--regionEnd=REGIONEND
-		When running imputation, where to stop [default NA] 
 
 	--buffer=BUFFER
 		Buffer of region to perform imputation over. So imputation is run form regionStart-buffer to regionEnd+buffer, and reported for regionStart to regionEnd, including the bases of regionStart and regionEnd [default NA] 
 
 	--fflist=FFLIST
 		Path to file with fetal fraction values, one row per entry, in the same order as the bamlist [default ""] 
-
-	--bamlist=BAMLIST
-		Path to file with bam file locations. File is one row per entry, path to bam files. Bam index files should exist in same directory as for each bam, suffixed either .bam.bai or .bai [default ""] 
 
 	--cramlist=CRAMLIST
 		Path to file with cram file locations. File is one row per entry, path to cram files. cram files are converted to bam files on the fly for parsing into QUILT [default ""] 
@@ -34,9 +20,6 @@ Options:
 
 	--reference=REFERENCE
 		Path to reference fasta used for making cram files. Only required if cramlist is defined [default ""] 
-
-	--nCores=NCORES
-		How many cores to use [default 1] 
 
 	--nGibbsSamples=NGIBBSSAMPLES
 		How many Gibbs samples to use [default 7] 
@@ -61,9 +44,6 @@ Options:
 
 	--heuristic_match_thin=HEURISTIC_MATCH_THIN
 		What fraction of grid sites to use when looking for good matches in the full haplotype reference panel. Smaller values run faster but potentially miss haplotypes [default 0.1] 
-
-	--output_filename=OUTPUT_FILENAME
-		Override the default bgzip-VCF / bgen output name with this given file name. Please note that this does not change the names of inputs or outputs (e.g. RData, plots), so if outputdir is unchanged and if multiple QUILT runs are processing on the same region then they may over-write each others inputs and outputs. [default NULL] 
 
 	--RData_objects_to_save=RDATA_OBJECTS_TO_SAVE
 		Can be used to name interim and misc results from imputation to save an an RData file. Default NULL means do not save such output [default NULL] 
@@ -157,9 +137,6 @@ Options:
 
 	--nGen=NGEN
 		Number of generations since founding or mixing. Note that the algorithm is relatively robust to this. Use nGen = 4 * Ne / K if unsure [default NA] 
-
-	--reference_vcf_file=REFERENCE_VCF_FILE
-		Path to reference VCF file with haplotypes, matching the reference haplotype and legend file [default ""] 
 
 	--reference_haplotype_file=REFERENCE_HAPLOTYPE_FILE
 		Path to reference haplotype file in IMPUTE format (file with no header and no rownames, one row per SNP, one column per reference haplotype, space separated, values must be 0 or 1) [default ""] 
@@ -262,8 +239,3 @@ Options:
 
 	--calculate_gamma_on_the_fly=CALCULATE_GAMMA_ON_THE_FLY
 		If when calculating genProbs, calculate gamma on the fly rather than saving [default TRUE] 
-
-	-h, --help
-		Show this help message and exit
-
-

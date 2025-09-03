@@ -76,7 +76,7 @@ git clone https://github.com/vibaotram/imputation.git
 
 3. Configure the pipeline
 - Prepare a config file with this [template](config/config.yaml). 
-- For each imputation tool - BEAGLE, STITCH, GLIMPSE2 (GLIMPSE2_phase), QUILT2, and GENEIMP, parameters can be provided in a csv file with different parameters in columns. Column names must match exactly parameter name, without the leading "--/-". Different sets of values for the parameters can be provided in different rows. If the csv file is not provided in the config file, default parameters will be used. Details of parameters for all the imputation tools can be found [here](config/params)
+- For each imputation tool - BEAGLE, STITCH, GLIMPSE2 (GLIMPSE2_phase), QUILT2, and GENEIMP, parameters can be provided in a csv file with different parameters in columns. Column names must match exactly parameter long name, without the leading "--/-". Different sets of values for the parameters can be provided in different rows. If the csv file is not provided in the config file, default parameters will be used. Details of parameters for all the imputation tools can be found [here](config/params)
 - Number of CPUs (THREADS) for each tool in the config file must be specified.
 
 4. Run Snakemake:
