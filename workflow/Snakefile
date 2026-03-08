@@ -36,7 +36,7 @@ class StitchParamFile(Exception):
     pass
 
 stitch_add=os.path.isfile(config["STITCH"]["PARAM"])
-if stitch_add:
+if config['IMPUTATION']['STITCH'] and stitch_add:
     df = pd.read_csv(config["STITCH"]["PARAM"], sep=",")
 
     required_cols = {"K", "nGen"}
@@ -53,8 +53,10 @@ if stitch_add:
         filename_params="*",
         filename_sep="~"
     )
-else:
+elif config['IMPUTATION']['STITCH'] and not stitch_add:
     raise StitchParamFile("A param file for STITCH containing values for K and nGen must be provided in the config file.")
+else:
+    stitch_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
 
 beagle_add=os.path.isfile(config["BEAGLE"]["PARAM"])
 if beagle_add:
@@ -72,7 +74,7 @@ class QuiltParamFile(Exception):
     pass
 
 quilt_add=os.path.isfile(config["QUILT"]["PARAM"])
-if quilt_add:
+if config['IMPUTATION']['QUILT'] and quilt_add:
     df = pd.read_csv(config["QUILT"]["PARAM"], sep=",")
 
     required_cols = {"nGen"}
@@ -89,9 +91,10 @@ if quilt_add:
         filename_params="*",
         filename_sep="~"
     )
-else:
+elif config['IMPUTATION']['QUILT'] and not quilt_add:
     raise QuiltParamFile("A param file for QUILT  containing value(s) for nGen must be provided in the config file.")
-
+else:
+    quilt_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
 
 glimpsePHASE_add=os.path.isfile(config["GLIMPSE"]["GLIMPSE_PHASE_PARAM"])
 if glimpsePHASE_add:
