@@ -32,11 +32,14 @@ for line in REFfile:
         CHROM.append(line[1:-1])
 REFfile.close()
 
+class StitchParamFile(Exception):
+    pass
+
 stitch_add=os.path.isfile(config["STITCH"]["PARAM"])
 if stitch_add:
     stitch_paramspace = Paramspace(pd.read_csv(config["STITCH"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
 else:
-    stitch_paramspace = Paramspace(pd.DataFrame({'param': ['default']}), param_sep = "_")
+    raise StitchParamFile("A param file for STITCH containing values for K and nGen must be provided in the config file.")
 
 beagle_add=os.path.isfile(config["BEAGLE"]["PARAM"])
 if beagle_add:
@@ -57,7 +60,7 @@ quilt_add=os.path.isfile(config["QUILT"]["PARAM"])
 if quilt_add:
     quilt_paramspace = Paramspace(pd.read_csv(config["QUILT"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
 else:
-    raise QuiltParamFile("A param file for QUILT must be provided in the config file")
+    raise QuiltParamFile("A param file for QUILT  containing value(s) for nGen must be provided in the config file.")
 
 
 glimpsePHASE_add=os.path.isfile(config["GLIMPSE"]["GLIMPSE_PHASE_PARAM"])
@@ -455,6 +458,7 @@ rule STITCH_CONCAT:
 
         tabix -f {output}
         '''
+
 
 
 
