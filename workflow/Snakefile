@@ -37,7 +37,22 @@ class StitchParamFile(Exception):
 
 stitch_add=os.path.isfile(config["STITCH"]["PARAM"])
 if stitch_add:
-    stitch_paramspace = Paramspace(pd.read_csv(config["STITCH"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
+    df = pd.read_csv(config["STITCH"]["PARAM"], sep=",")
+
+    required_cols = {"K", "nGen"}
+    missing = required_cols - set(df.columns)
+    
+    if missing:
+        raise StitchParamFile(
+            f"Missing required parameter(s) in STITCH param file: {', '.join(missing)}"
+        )
+
+    stitch_paramspace = Paramspace(
+        df,
+        param_sep="=",
+        filename_params="*",
+        filename_sep="~"
+    )
 else:
     raise StitchParamFile("A param file for STITCH containing values for K and nGen must be provided in the config file.")
 
@@ -58,7 +73,22 @@ class QuiltParamFile(Exception):
 
 quilt_add=os.path.isfile(config["QUILT"]["PARAM"])
 if quilt_add:
-    quilt_paramspace = Paramspace(pd.read_csv(config["QUILT"]["PARAM"], sep=","), param_sep = "=", filename_params="*", filename_sep = "~")
+    df = pd.read_csv(config["QUILT"]["PARAM"], sep=",")
+
+    required_cols = {"nGen"}
+    missing = required_cols - set(df.columns)
+    
+    if missing:
+        raise QuiltParamFile(
+            f"Missing required parameter(s) in QUILT param file: {', '.join(missing)}"
+        )
+
+    quilt_paramspace = Paramspace(
+        df,
+        param_sep="=",
+        filename_params="*",
+        filename_sep="~"
+    )
 else:
     raise QuiltParamFile("A param file for QUILT  containing value(s) for nGen must be provided in the config file.")
 
