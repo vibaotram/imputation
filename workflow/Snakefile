@@ -578,7 +578,7 @@ rule QUILT:
             --reference_vcf_file={input.REF_VCF} \
             --nCores={threads} \
             {params.PARAM} || \
-            echo -e "\e[31mSeems like Quilt2.R has failed either because of small reference panel or memory issues.\nIncreasing memory resource and decreasing threads might fix the memeory issues.\e[0m"
+            echo -e "\\e[31mSeems like Quilt2.R has failed either because of small reference panel or memory issues.\nIncreasing memory resource and decreasing threads might fix the memeory issues.\\e[0m"
 
 
             CHUNK_VCFS="${{CHUNK_VCFS}} {params.OUTDIR}/{params.OUTNAME}_CHUNK${{c}}.vcf.gz"
