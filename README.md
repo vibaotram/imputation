@@ -64,7 +64,8 @@ Output data is in folder `<OUTPUT_DIR>/ACCURACY`, including:
 
 ## Software requirement
 - Snakemake >=8.20.0
-- Singularity >= 3.0.0
+- Apptainer for Snakemake's `--sdm apptainer` container execution. Singularity
+  >= 3.0.0 may also work on systems that still provide it.
 
 ## Run the pipeline
 1. Download the pipeline:
