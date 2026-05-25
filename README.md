@@ -14,7 +14,10 @@ The pipeline consists of 3 main parts: imputation by multiple choices of tool, p
 ## Input data
 
 - TARGET_BAM:       a text file containing a list of BAM files (low-coverage mapped reads) for imputation targets, 1 file per line
-- REFERENCE_SEQ:    the reference genome in fasta format
+- REFERENCE_SEQ:    the reference genome in fasta format. Sequence IDs are used
+  as chromosome/scaffold names throughout the workflow, so FASTA headers should
+  not contain spaces or descriptions after the ID. Use headers like
+  `>CAULO00176`, not `>CAULO00176 Name species another discrete word`.
 - REFERENCE_VCFGZ:  reference panel in vcf.gz format (SNPs obtained from high-coverage WGS data), index file is required 
 - GROUNDTRUTH:      ground truth genotypes in vcf.gz format, optional
 
