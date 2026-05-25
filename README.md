@@ -94,6 +94,11 @@ snakemake POPGEN --sdm apptainer --configfile config/config.yaml --cores 12
 ## run imputation, downstream analysis, and accuracy evaluation if a groundtruth is provided
 snakemake ACCURACY --sdm apptainer --configfile config/config.yaml --cores 12
 ```
+These commands run Snakemake jobs on the machine where they are started. On a
+shared HPC system, run the pipeline from an allocated compute or interactive
+job, or configure Snakemake with your site's cluster executor/profile before
+launching it. Avoid running the full pipeline directly on a login node.
+
 A test data set of 10 LCS samples, with 10 samples in the reference panel, and a groundtruth set of SNPs, is provided in the `test` folder. Scripts to run the test can be found in this [bash file](./test/run_test.sh). Because of the small test data, some imputation tools such as GeneImp or QUILT2 may fail with default parameter settings.
 
 ## Note
